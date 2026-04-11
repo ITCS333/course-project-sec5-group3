@@ -1,72 +1,72 @@
-let resources = [];
+let currentResourceId = null;
+let currentComments = [];
 
-let resourceForm = document.getElementById("resource-form");
-const resourcesTbody = document.getElementById("resources-tbody");
+const resourceTitle = document.getElementById("resource-title");
+const resourceDescription = document.getElementById("resource-description");
+const resourceLink = document.getElementById("resource-link");
+const commentList = document.getElementById("comment-list");
+const commentForm = document.getElementById("comment-form");
+const newCommentInput = document.getElementById("new-comment");
 
-function createResourceRow(resource) {
-  const tr = document.createElement("tr");
-
-  const titleTd = document.createElement("td");
-  titleTd.textContent = resource.title;
-
-  const descriptionTd = document.createElement("td");
-  descriptionTd.textContent = resource.description;
-
-  const linkTd = document.createElement("td");
-  linkTd.textContent = resource.link;
-
-  const actionsTd = document.createElement("td");
-
-  const editBtn = document.createElement("button");
-  editBtn.textContent = "Edit";
-  editBtn.className = "edit-btn";
-  editBtn.dataset.id = resource.id;
-
-  const deleteBtn = document.createElement("button");
-  deleteBtn.textContent = "Delete";
-  deleteBtn.className = "delete-btn";
-  deleteBtn.dataset.id = resource.id;
-
-  actionsTd.appendChild(editBtn);
-  actionsTd.appendChild(deleteBtn);
-
-  tr.appendChild(titleTd);
-  tr.appendChild(descriptionTd);
-  tr.appendChild(linkTd);
-  tr.appendChild(actionsTd);
-
-  return tr;
+function getResourceIdFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("id");
 }
 
-function renderTable() {
-  resourcesTbody.innerHTML = "";
+function renderResourceDetails(resource) {
+  resourceTitle.textContent = resource.title;
+  resourceDescription.textContent = resource.description;
+  resourceLink.href = resource.link;
+}
 
-  resources.forEach(function(resource) {
-    const row = createResourceRow(resource);
-    resourcesTbody.appendChild(row);
+function createCommentArticle(comment) {
+  const article = document.createElement("article");
+
+  const p = document.createElement("p");
+  p.textContent = comment.text;
+
+  const footer = document.createElement("footer");
+  footer.textContent = "Posted by: " + comment.author;
+
+  article.appendChild(p);
+  article.appendChild(footer);
+
+  return article;
+}
+
+function renderComments() {
+  commentList.innerHTML = "";
+
+  currentComments.forEach(function(comment) {
+    const article = createCommentArticle(comment);
+    commentList.appendChild(article);
   });
 }
 
-async function handleAddResource(event) {
+async function handleAddComment(event) {
   event.preventDefault();
 
-  const title = document.getElementById("resource-title").value.trim();
-  const description = document.getElementById("resource-description").value.trim();
-  const link = document.getElementById("resource-link").value.trim();
+  const commentText = newCommentInput.value.trim();
+
+  if (!commentText) return;
 
   try {
-    const response = await fetch("./api/index.php", {
+    const response = await fetch("./api/index.php?action=comment", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, link })
+      body: JSON.stringify({
+        resource_id: currentResourceId,
+        author: "Student",
+        text: commentText
+      })
     });
 
     const result = await response.json();
 
     if (result.success) {
-      resources.push({ id: result.id, title, description, link });
-      renderTable();
-      resourceForm.reset();
+      currentComments.push(result.data);
+      renderComments();
+      newCommentInput.value = "";
     } else {
       alert(result.message || "An error occurred.");
     }
@@ -75,100 +75,35 @@ async function handleAddResource(event) {
   }
 }
 
-function handleTableClick(event) {
-  const target = event.target;
+async function initializePage() {
+  currentResourceId = getResourceIdFromURL();
 
-  if (target.classList.contains("delete-btn")) {
-    const id = parseInt(target.dataset.id);
-
-    fetch("./api/index.php?id=" + id, {
-      method: "DELETE"
-    })
-      .then(function(response) { return response.json(); })
-      .then(function(result) {
-        if (result.success) {
-          resources = resources.filter(function(r) { return r.id !== id; });
-          renderTable();
-        } else {
-          alert(result.message || "An error occurred.");
-        }
-      })
-      .catch(function(error) {
-        alert("An error occurred: " + error.message);
-      });
+  if (!currentResourceId) {
+    resourceTitle.textContent = "Resource not found.";
+    return;
   }
 
-  if (target.classList.contains("edit-btn")) {
-    const id = parseInt(target.dataset.id);
-
-    const resource = resources.find(function(r) { return r.id === id; });
-    if (!resource) return;
-
-    document.getElementById("resource-title").value = resource.title;
-    document.getElementById("resource-description").value = resource.description;
-    document.getElementById("resource-link").value = resource.link;
-
-    document.getElementById("add-resource").textContent = "Update Resource";
-
-    const newForm = resourceForm.cloneNode(true);
-    resourceForm.parentNode.replaceChild(newForm, resourceForm);
-    resourceForm = newForm;
-
-    resourceForm.addEventListener("submit", async function handleUpdate(event) {
-      event.preventDefault();
-
-      const title = document.getElementById("resource-title").value.trim();
-      const description = document.getElementById("resource-description").value.trim();
-      const link = document.getElementById("resource-link").value.trim();
-
-      try {
-        const response = await fetch("./api/index.php", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, title, description, link })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          resources = resources.map(function(r) {
-            return r.id === id ? { id, title, description, link } : r;
-          });
-
-          renderTable();
-          resourceForm.reset();
-
-          document.getElementById("add-resource").textContent = "Add Resource";
-
-          resourceForm.addEventListener("submit", handleAddResource);
-        } else {
-          alert(result.message || "An error occurred.");
-        }
-      } catch (error) {
-        alert("An error occurred: " + error.message);
-      }
-    });
-  }
-}
-
-async function loadAndInitialize() {
   try {
-    const response = await fetch("./api/index.php");
+    const [resourceResponse, commentsResponse] = await Promise.all([
+      fetch("./api/index.php?id=" + currentResourceId),
+      fetch("./api/index.php?resource_id=" + currentResourceId + "&action=comments")
+    ]);
 
-    if (!response.ok) {
-      alert("Failed to load resources from the server.");
-      return;
+    const resourceResult = await resourceResponse.json();
+    const commentsResult = await commentsResponse.json();
+
+    currentComments = commentsResult.success ? commentsResult.data : [];
+
+    if (resourceResult.success && resourceResult.data) {
+      renderResourceDetails(resourceResult.data);
+      renderComments();
+      commentForm.addEventListener("submit", handleAddComment);
+    } else {
+      resourceTitle.textContent = "Resource not found.";
     }
-
-    const result = await response.json();
-    resources = result.data;
-    renderTable();
-
-    resourceForm.addEventListener("submit", handleAddResource);
-    resourcesTbody.addEventListener("click", handleTableClick);
   } catch (error) {
-    alert("An error occurred while loading resources: " + error.message);
+    resourceTitle.textContent = "Resource not found.";
   }
 }
 
-loadAndInitialize();
+initializePage();
