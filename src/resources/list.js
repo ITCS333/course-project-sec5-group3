@@ -1,18 +1,16 @@
 /*
   Requirement: Populate the "Course Resources" list page.
-
   Instructions:
   1. Link this file to `list.html` using:
      <script src="list.js" defer></script>
-
   2. In `list.html`, add id="resource-list-section" to the
      <section> element that will contain the resource articles.
-
   3. Implement the TODOs below.
 */
 
 // --- Element Selections ---
 // TODO: Select the section for the resource list ('#resource-list-section').
+const resourceListSection = document.getElementById("resource-list-section");
 
 // --- Functions ---
 
@@ -24,7 +22,23 @@
  * `details.html?id=${id}` so the detail page knows which resource to load.
  */
 function createResourceArticle(resource) {
-  // ... your implementation here ...
+  const article = document.createElement("article");
+
+  const h2 = document.createElement("h2");
+  h2.textContent = resource.title;
+
+  const descriptionP = document.createElement("p");
+  descriptionP.textContent = resource.description;
+
+  const link = document.createElement("a");
+  link.href = "details.html?id=" + resource.id;
+  link.textContent = "View Resource & Discussion";
+
+  article.appendChild(h2);
+  article.appendChild(descriptionP);
+  article.appendChild(link);
+
+  return article;
 }
 
 /**
@@ -40,7 +54,27 @@ function createResourceArticle(resource) {
  *    - Append the returned <article> element to the list section.
  */
 async function loadResources() {
-  // ... your implementation here ...
+  try {
+    const response = await fetch("./api/index.php");
+
+    if (!response.ok) {
+      console.error("Failed to fetch resources:", response.statusText);
+      alert("Failed to load resources from the server.");
+      return;
+    }
+
+    const result = await response.json();
+
+    resourceListSection.innerHTML = "";
+
+    result.data.forEach(function(resource) {
+      const article = createResourceArticle(resource);
+      resourceListSection.appendChild(article);
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    alert("An error occurred while loading resources: " + error.message);
+  }
 }
 
 // --- Initial Page Load ---
