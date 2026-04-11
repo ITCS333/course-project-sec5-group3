@@ -23,7 +23,7 @@ The website covers five functional areas, each assigned to one team member.
 |------|-------------|------------|-----------------|
 | 1 | Home Page, Authentication & User Management |202302065 | Abdulrahman Mohammed Ayed Alhailam|
 | 2 | Course Resources |202205307 |Redha-haideri |
-| 3 | Weekly Breakdown | | |
+| 3 | Weekly Breakdown |202307323 |Ahmed Mohammed Omar |
 | 4 | Assignments |202002462 |Murtadha113 |
 | 5 | Discussion Board |202002462 |Murtadha113 |
 
