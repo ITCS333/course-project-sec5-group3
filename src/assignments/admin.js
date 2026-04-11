@@ -1,92 +1,91 @@
 /*
-  Requirement: Make the "Manage Assignments" page interactive.
+  Requirement: Make the "Manage Weekly Breakdown" page interactive.
 
   Instructions:
   1. This file is already linked to `admin.html` via:
          <script src="admin.js" defer></script>
 
   2. In `admin.html`:
-     - The form has id="assignment-form".
-     - The submit button has id="add-assignment".
-     - The <tbody> has id="assignments-tbody".
-     - Columns rendered per row:
-       Title | Due Date | Description | Actions.
+     - The form has id="week-form".
+     - The submit button has id="add-week".
+     - The <tbody> has id="weeks-tbody".
+     - Columns rendered per row: Week Title | Start Date | Description | Actions.
 
   3. Implement the TODOs below.
 
   API base URL: ./api/index.php
   All requests and responses use JSON.
-  Successful list response shape: { success: true, data: [ ...assignment objects ] }
-  Each assignment object shape:
+  Successful list response shape: { success: true, data: [ ...week objects ] }
+  Each week object shape:
     {
-      id:          number,   // integer primary key from the assignments table
+      id:          number,   // integer primary key from the weeks table
       title:       string,
-      due_date:    string,   // "YYYY-MM-DD" — matches the SQL column name
+      start_date:  string,   // "YYYY-MM-DD"
       description: string,
-      files:       string[]  // decoded array of URL strings
+      links:       string[]  // decoded array of URL strings
     }
 */
 
 // --- Global Data Store ---
-// Holds the assignments currently displayed in the table.
-let assignments = [];
+// Holds the weeks currently displayed in the table.
+let weeks = [];
 
 // --- Element Selections ---
-// TODO: Select the assignment form by id 'assignment-form'.
-const assignmentForm = document.getElementById('assignment-form');
+// TODO: Select the week form by id 'week-form'.
+const weekForm = document.getElementById("week-form");
 
-// TODO: Select the assignments table body by id 'assignments-tbody'.
-const assignmentsTbody = document.getElementById('assignments-tbody');
+// TODO: Select the weeks table body by id 'weeks-tbody'.
+const weeksTbody = document.getElementById("weeks-tbody");
 
 // --- Functions ---
 
 /**
- * TODO: Implement createAssignmentRow.
+ * TODO: Implement createWeekRow.
  *
  * Parameters:
- *   assignment — one assignment object with shape:
- *     { id, title, due_date, description, files }
+ *   week — one week object with shape:
+ *     { id, title, start_date, description, links }
  *
  * Returns a <tr> element with four <td>s:
  *   1. title
- *   2. due_date   (the "YYYY-MM-DD" string — use due_date, not dueDate)
+ *   2. start_date  (the "YYYY-MM-DD" string from the weeks table)
  *   3. description
  *   4. Actions — two buttons:
  *        <button class="edit-btn"   data-id="{id}">Edit</button>
  *        <button class="delete-btn" data-id="{id}">Delete</button>
- *      The data-id holds the integer primary key from the assignments table.
+ *      The data-id holds the integer primary key from the weeks table.
  */
-function createAssignmentRow(assignment) {
-  const tr = document.createElement('tr');
+function createWeekRow(week) {
+  const tr = document.createElement("tr");
 
-  const tdTitle = document.createElement('td');
-  tdTitle.textContent = assignment.title;
+  const titleTd = document.createElement("td");
+  titleTd.textContent = week.title;
 
-  const tdDue = document.createElement('td');
-  tdDue.textContent = assignment.due_date;
+  const dateTd = document.createElement("td");
+  dateTd.textContent = week.start_date;
 
-  const tdDesc = document.createElement('td');
-  tdDesc.textContent = assignment.description;
+  const descTd = document.createElement("td");
+  descTd.textContent = week.description;
 
-  const tdActions = document.createElement('td');
+  const actionsTd = document.createElement("td");
 
-  const editBtn = document.createElement('button');
-  editBtn.className   = 'edit-btn';
-  editBtn.dataset.id  = assignment.id;
-  editBtn.textContent = 'Edit';
+  const editBtn = document.createElement("button");
+  editBtn.textContent = "Edit";
+  editBtn.className = "edit-btn";
+  editBtn.dataset.id = week.id;
 
-  const deleteBtn = document.createElement('button');
-  deleteBtn.className   = 'delete-btn';
-  deleteBtn.dataset.id  = assignment.id;
-  deleteBtn.textContent = 'Delete';
+  const deleteBtn = document.createElement("button");
+  deleteBtn.textContent = "Delete";
+  deleteBtn.className = "delete-btn";
+  deleteBtn.dataset.id = week.id;
 
-  tdActions.appendChild(editBtn);
-  tdActions.appendChild(deleteBtn);
+  actionsTd.appendChild(editBtn);
+  actionsTd.appendChild(deleteBtn);
 
-  tr.appendChild(tdTitle);
-  tr.appendChild(tdDue);
-  tr.appendChild(tdDesc);
-  tr.appendChild(tdActions);
+  tr.appendChild(titleTd);
+  tr.appendChild(dateTd);
+  tr.appendChild(descTd);
+  tr.appendChild(actionsTd);
 
   return tr;
 }
@@ -95,164 +94,198 @@ function createAssignmentRow(assignment) {
  * TODO: Implement renderTable.
  *
  * It should:
- * 1. Clear the assignments table body (set innerHTML to "").
- * 2. Loop through the global `assignments` array.
- * 3. For each assignment, call createAssignmentRow(assignment) and
- *    append the <tr> to the table body.
+ * 1. Clear the weeks table body (set innerHTML to "").
+ * 2. Loop through the global `weeks` array.
+ * 3. For each week, call createWeekRow(week) and append the <tr>
+ *    to the table body.
  */
 function renderTable() {
-  assignmentsTbody.innerHTML = '';
-  assignments.forEach(function(assignment) {
-    assignmentsTbody.appendChild(createAssignmentRow(assignment));
+  weeksTbody.innerHTML = "";
+
+  weeks.forEach(function(week) {
+    const row = createWeekRow(week);
+    weeksTbody.appendChild(row);
   });
 }
 
 /**
- * TODO: Implement handleAddAssignment (async).
+ * TODO: Implement handleAddWeek (async).
  *
  * This is the event handler for the form's 'submit' event.
  * It should:
  * 1. Call event.preventDefault().
  * 2. Read values from:
- *      - #assignment-title       → title (string)
- *      - #assignment-due-date    → due_date (string, "YYYY-MM-DD")
- *      - #assignment-description → description (string)
- *      - #assignment-files       → split by newlines (\n) and filter
- *                                  empty strings to produce a files array.
- * 3. Check if the submit button (#add-assignment) has a data-edit-id
- *    attribute.
- *    - If it does, call handleUpdateAssignment() with that id and the
- *      field values.
+ *      - #week-title       → title (string)
+ *      - #week-start-date  → start_date (string, "YYYY-MM-DD")
+ *      - #week-description → description (string)
+ *      - #week-links       → split by newlines (\n) and filter empty
+ *                            strings to produce a links array.
+ * 3. Check if the submit button (#add-week) has a data-edit-id attribute.
+ *    - If it does, call handleUpdateWeek() with that id and the field values.
  *    - If it does not, send a POST to './api/index.php' with the body:
- *        { title, due_date, description, files }
+ *        { title, start_date, description, links }
  *      On success (result.success === true):
- *        - Add the new assignment (with the id from result.id) to the
- *          global `assignments` array.
+ *        - Add the new week (with the id from result.id) to the global
+ *          `weeks` array.
  *        - Call renderTable().
  *        - Reset the form.
  */
-async function handleAddAssignment(event) {
+async function handleAddWeek(event) {
   event.preventDefault();
 
-  const title       = document.getElementById('assignment-title').value;
-  const due_date    = document.getElementById('assignment-due-date').value;
-  const description = document.getElementById('assignment-description').value;
-  const filesRaw    = document.getElementById('assignment-files').value;
-  const files       = filesRaw.split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+  const title = document.getElementById("week-title").value.trim();
+  const start_date = document.getElementById("week-start-date").value;
+  const description = document.getElementById("week-description").value.trim();
+  const links = document.getElementById("week-links").value
+    .split("\n")
+    .filter(function(line) { return line.trim() !== ""; });
 
-  const addBtn = document.getElementById('add-assignment');
+  const addBtn = document.getElementById("add-week");
   const editId = addBtn.dataset.editId;
 
   if (editId) {
-    await handleUpdateAssignment(editId, { title, due_date, description, files });
-    return;
-  }
+    await handleUpdateWeek(parseInt(editId), { title, start_date, description, links });
+  } else {
+    try {
+      const response = await fetch("./api/index.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, start_date, description, links })
+      });
 
-  const response = await fetch('./api/index.php', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ title, due_date, description, files })
-  });
+      const result = await response.json();
 
-  const result = await response.json();
-
-  if (result.success === true) {
-    assignments.push({ id: result.id, title, due_date, description, files });
-    renderTable();
-    assignmentForm.reset();
+      if (result.success) {
+        weeks.push({
+          id: result.id,
+          title,
+          start_date,
+          description,
+          links
+        });
+        renderTable();
+        weekForm.reset();
+      } else {
+        alert(result.message || "An error occurred.");
+      }
+    } catch (error) {
+      alert("An error occurred: " + error.message);
+    }
   }
 }
 
 /**
- * TODO: Implement handleUpdateAssignment (async).
+ * TODO: Implement handleUpdateWeek (async).
  *
  * Parameters:
- *   id     — the integer primary key of the assignment being edited.
- *   fields — object with { title, due_date, description, files }.
+ *   id     — the integer primary key of the week being edited.
+ *   fields — object with { title, start_date, description, links }.
  *
  * It should:
  * 1. Send a PUT to './api/index.php' with the body:
- *      { id, title, due_date, description, files }
+ *      { id, title, start_date, description, links }
  * 2. On success:
- *    - Update the matching entry in the global `assignments` array.
+ *    - Update the matching entry in the global `weeks` array.
  *    - Call renderTable().
  *    - Reset the form.
- *    - Restore the submit button text to "Add Assignment" and remove
+ *    - Restore the submit button text to "Add Week" and remove
  *      its data-edit-id attribute.
  */
-async function handleUpdateAssignment(id, fields) {
-  const response = await fetch('./api/index.php', {
-    method:  'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ id: Number(id), ...fields })
-  });
-
-  const result = await response.json();
-
-  if (result.success === true) {
-    assignments = assignments.map(function(a) {
-      return a.id === Number(id) ? { id: Number(id), ...fields } : a;
+async function handleUpdateWeek(id, fields) {
+  try {
+    const response = await fetch("./api/index.php", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...fields })
     });
-    renderTable();
-    assignmentForm.reset();
-    const addBtn       = document.getElementById('add-assignment');
-    addBtn.textContent = 'Add Assignment';
-    delete addBtn.dataset.editId;
+
+    const result = await response.json();
+
+    if (result.success) {
+      weeks = weeks.map(function(week) {
+        if (week.id === id) {
+          return { id, ...fields };
+        }
+        return week;
+      });
+
+      renderTable();
+      weekForm.reset();
+
+      const addBtn = document.getElementById("add-week");
+      addBtn.textContent = "Add Week";
+      delete addBtn.dataset.editId;
+    } else {
+      alert(result.message || "An error occurred.");
+    }
+  } catch (error) {
+    alert("An error occurred: " + error.message);
   }
 }
 
 /**
  * TODO: Implement handleTableClick (async).
  *
- * This is a delegated click listener on the assignments table body.
+ * This is a delegated click listener on the weeks table body.
  * It should:
  * 1. If event.target has class "delete-btn":
  *    a. Read the integer id from event.target.dataset.id.
  *    b. Send a DELETE to './api/index.php?id=<id>'.
- *    c. On success, remove the assignment from the global `assignments`
- *       array and call renderTable().
+ *    c. On success, remove the week from the global `weeks` array
+ *       and call renderTable().
  *
  * 2. If event.target has class "edit-btn":
  *    a. Read the integer id from event.target.dataset.id.
- *    b. Find the matching assignment in the global `assignments` array.
- *    c. Populate the form fields:
- *         #assignment-title       ← assignment.title
- *         #assignment-due-date    ← assignment.due_date
- *         #assignment-description ← assignment.description
- *         #assignment-files       ← assignment.files joined with newlines (\n)
- *    d. Change the submit button (#add-assignment) text to
- *       "Update Assignment" and set its data-edit-id attribute to the
- *       assignment's id.
+ *    b. Find the matching week in the global `weeks` array.
+ *    c. Populate the form fields (#week-title, #week-start-date,
+ *       #week-description, #week-links) with the week's data.
+ *       For #week-links, join the links array with newlines (\n).
+ *    d. Change the submit button (#add-week) text to "Update Week"
+ *       and set its data-edit-id attribute to the week's id.
  */
 async function handleTableClick(event) {
-  if (event.target.classList.contains('delete-btn')) {
-    const id = event.target.dataset.id;
+  const target = event.target;
 
-    const response = await fetch('./api/index.php?id=' + id, { method: 'DELETE' });
-    const result   = await response.json();
+  if (target.classList.contains("delete-btn")) {
+    const id = parseInt(target.dataset.id);
 
-    if (result.success === true) {
-      assignments = assignments.filter(function(a) { return a.id !== Number(id); });
-      renderTable();
+    try {
+      const response = await fetch("./api/index.php?id=" + id, {
+        method: "DELETE"
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        weeks = weeks.filter(function(week) {
+          return week.id !== id;
+        });
+        renderTable();
+      } else {
+        alert(result.message || "An error occurred.");
+      }
+    } catch (error) {
+      alert("An error occurred: " + error.message);
     }
   }
 
-  if (event.target.classList.contains('edit-btn')) {
-    const id         = event.target.dataset.id;
-    const assignment = assignments.find(function(a) { return a.id === Number(id); });
+  if (target.classList.contains("edit-btn")) {
+    const id = parseInt(target.dataset.id);
 
-    if (!assignment) return;
+    const week = weeks.find(function(w) {
+      return w.id === id;
+    });
 
-    document.getElementById('assignment-title').value       = assignment.title;
-    document.getElementById('assignment-due-date').value    = assignment.due_date;
-    document.getElementById('assignment-description').value = assignment.description;
-    document.getElementById('assignment-files').value       = Array.isArray(assignment.files)
-      ? assignment.files.join('\n')
-      : '';
+    if (!week) return;
 
-    const addBtn          = document.getElementById('add-assignment');
-    addBtn.textContent    = 'Update Assignment';
-    addBtn.dataset.editId = assignment.id;
+    document.getElementById("week-title").value = week.title;
+    document.getElementById("week-start-date").value = week.start_date;
+    document.getElementById("week-description").value = week.description;
+    document.getElementById("week-links").value = week.links.join("\n");
+
+    const addBtn = document.getElementById("add-week");
+    addBtn.textContent = "Update Week";
+    addBtn.dataset.editId = week.id;
   }
 }
 
@@ -261,25 +294,34 @@ async function handleTableClick(event) {
  *
  * It should:
  * 1. Send a GET to './api/index.php'.
- *    Response shape: { success: true, data: [ ...assignment objects ] }
- * 2. Store the data array in the global `assignments` variable.
+ *    Response shape: { success: true, data: [ ...week objects ] }
+ * 2. Store the data array in the global `weeks` variable.
  * 3. Call renderTable() to populate the table.
- * 4. Attach the 'submit' event listener to the assignment form
- *    (calls handleAddAssignment).
- * 5. Attach a 'click' event listener to the assignments table body
+ * 4. Attach the 'submit' event listener to the week form
+ *    (calls handleAddWeek).
+ * 5. Attach a 'click' event listener to the weeks table body
  *    (calls handleTableClick — event delegation for edit and delete).
  */
 async function loadAndInitialize() {
-  const response = await fetch('./api/index.php');
-  const result   = await response.json();
+  try {
+    const response = await fetch("./api/index.php");
 
-  if (result.success && Array.isArray(result.data)) {
-    assignments = result.data;
+    if (!response.ok) {
+      console.error("Failed to fetch weeks:", response.statusText);
+      alert("Failed to load weeks from the server.");
+      return;
+    }
+
+    const result = await response.json();
+    weeks = result.data;
+    renderTable();
+
+    weekForm.addEventListener("submit", handleAddWeek);
+    weeksTbody.addEventListener("click", handleTableClick);
+  } catch (error) {
+    console.error("Error:", error);
+    alert("An error occurred while loading weeks: " + error.message);
   }
-
-  renderTable();
-  assignmentForm.addEventListener('submit', handleAddAssignment);
-  assignmentsTbody.addEventListener('click', handleTableClick);
 }
 
 // --- Initial Page Load ---
