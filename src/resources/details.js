@@ -9,7 +9,7 @@ const commentForm = document.getElementById("comment-form");
 const newCommentInput = document.getElementById("new-comment");
 
 function getResourceIdFromURL() {
-  const params = new URLSearchParams(window.location.search);
+  let params = new URLSearchParams(window.location.search);
   return params.get("id");
 }
 
@@ -20,12 +20,12 @@ function renderResourceDetails(resource) {
 }
 
 function createCommentArticle(comment) {
-  const article = document.createElement("article");
+  let article = document.createElement("article");
 
-  const p = document.createElement("p");
+  let p = document.createElement("p");
   p.textContent = comment.text;
 
-  const footer = document.createElement("footer");
+  let footer = document.createElement("footer");
   footer.textContent = "Posted by: " + comment.author;
 
   article.appendChild(p);
@@ -37,72 +37,56 @@ function createCommentArticle(comment) {
 function renderComments() {
   commentList.innerHTML = "";
 
-  currentComments.forEach(function(comment) {
-    const article = createCommentArticle(comment);
+  for (let i = 0; i < currentComments.length; i++) {
+    let article = createCommentArticle(currentComments[i]);
     commentList.appendChild(article);
-  });
+  }
 }
 
 async function handleAddComment(event) {
   event.preventDefault();
 
-  const commentText = newCommentInput.value.trim();
+  let text = newCommentInput.value.trim();
+  if (!text) return;
 
-  if (!commentText) return;
+  let response = await fetch("./api/index.php?action=comment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      resource_id: currentResourceId,
+      author: "Student",
+      text: text
+    })
+  });
 
-  try {
-    const response = await fetch("./api/index.php?action=comment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        resource_id: currentResourceId,
-        author: "Student",
-        text: commentText
-      })
-    });
+  let result = await response.json();
 
-    const result = await response.json();
-
-    if (result.success) {
-      currentComments.push(result.data);
-      renderComments();
-      newCommentInput.value = "";
-    } else {
-      alert(result.message || "An error occurred.");
-    }
-  } catch (error) {
-    alert("An error occurred: " + error.message);
+  if (result.success === true) {
+    currentComments.push(result.data);
+    renderComments();
+    newCommentInput.value = "";
   }
 }
 
 async function initializePage() {
   currentResourceId = getResourceIdFromURL();
 
-  if (!currentResourceId) {
-    resourceTitle.textContent = "Resource not found.";
-    return;
-  }
+  if (!currentResourceId) return;
 
-  try {
-    const [resourceResponse, commentsResponse] = await Promise.all([
-      fetch("./api/index.php?id=" + currentResourceId),
-      fetch("./api/index.php?resource_id=" + currentResourceId + "&action=comments")
-    ]);
+  let responses = await Promise.all([
+    fetch("./api/index.php?id=" + currentResourceId),
+    fetch("./api/index.php?resource_id=" + currentResourceId + "&action=comments")
+  ]);
 
-    const resourceResult = await resourceResponse.json();
-    const commentsResult = await commentsResponse.json();
+  let resourceResult = await responses[0].json();
+  let commentsResult = await responses[1].json();
 
-    currentComments = commentsResult.success ? commentsResult.data : [];
+  currentComments = commentsResult.success ? commentsResult.data : [];
 
-    if (resourceResult.success && resourceResult.data) {
-      renderResourceDetails(resourceResult.data);
-      renderComments();
-      commentForm.addEventListener("submit", handleAddComment);
-    } else {
-      resourceTitle.textContent = "Resource not found.";
-    }
-  } catch (error) {
-    resourceTitle.textContent = "Resource not found.";
+  if (resourceResult.success === true) {
+    renderResourceDetails(resourceResult.data);
+    renderComments();
+    commentForm.addEventListener("submit", handleAddComment);
   }
 }
 
