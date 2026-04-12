@@ -1,177 +1,132 @@
-let resources = [];
+<!--
+  Requirement: Create the Admin View for Course Resources
+  Instructions:
+  Fill in the HTML elements as described in the comments.
+  This page allows the teacher (admin) to perform full CRUD operations on course resources.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- TODO: Add the 'meta' tag for character encoding (UTF-8). -->
+    <meta charset="UTF-8">
+    
+    <!-- TODO: Add the responsive 'viewport' meta tag.
+         The 'name' should be 'viewport' and the 'content' should set the 'width' to 'device-width'
+         and the 'initial-scale' to '1.0'. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-const resourceForm = document.getElementById("resource-form");
-const resourcesTbody = document.getElementById("resources-tbody");
+    <!-- TODO: Add a title, e.g., "Manage Resources". -->
+    <title>Manage Resources</title>
 
-function createResourceRow(resource) {
-  const tr = document.createElement("tr");
+    <!-- TODO: Link to your CSS framework or stylesheet. -->
+    <link rel="stylesheet" href="../common/styles.css">
 
-  const titleTd = document.createElement("td");
-  titleTd.textContent = resource.title;
+    <!-- TODO: Link this script file:
+         <script src="admin.js" defer></script> -->
+    <script src="admin.js" defer></script>
+</head>
+<body>
+    <!-- TODO: Create a 'header' with a main heading ('h1') "Manage Course Resources". -->
+    <header>
+        <h1>Manage Course Resources</h1>
+    </header>
 
-  const descriptionTd = document.createElement("td");
-  descriptionTd.textContent = resource.description;
+    <!-- TODO: Create the 'main' content area. -->
+    <main>
 
-  const linkTd = document.createElement("td");
-  linkTd.textContent = resource.link;
+        <!-- Section 1: Add/Edit Resource Form -->
+        <!-- TODO: Create a 'section' for the form. -->
+        <section>
+            <!-- TODO: Add a sub-heading ('h2') "Add a New Resource". -->
+            <h2>Add a New Resource</h2>
 
-  const actionsTd = document.createElement("td");
+            <!-- TODO: Create a 'form' with id="resource-form". Action can be '#'.
+                 This id is required by admin.js. -->
+            <form id="resource-form" action="#">
 
-  const editBtn = document.createElement("button");
-  editBtn.textContent = "Edit";
-  editBtn.className = "edit-btn";
-  editBtn.dataset.id = resource.id;
+                <!-- TODO: Use a 'fieldset' to group the form controls. -->
+                <fieldset>
+                    <!-- TODO: Add a 'legend', e.g., "Resource Details". -->
+                    <legend>Resource Details</legend>
 
-  const deleteBtn = document.createElement("button");
-  deleteBtn.textContent = "Delete";
-  deleteBtn.className = "delete-btn";
-  deleteBtn.dataset.id = resource.id;
+                    <!-- TODO: Add a 'label' and 'input' for the resource title.
+                         - label 'for': "resource-title"
+                         - input 'id': "resource-title", type="text", required -->
+                    <label for="resource-title">Title</label>
+                    <input type="text" id="resource-title" required>
 
-  actionsTd.appendChild(editBtn);
-  actionsTd.appendChild(deleteBtn);
+                    <!-- TODO: Add a 'label' and 'textarea' for the resource description.
+                         - label 'for': "resource-description"
+                         - textarea 'id': "resource-description" -->
+                    <label for="resource-description">Description</label>
+                    <textarea id="resource-description"></textarea>
 
-  tr.appendChild(titleTd);
-  tr.appendChild(descriptionTd);
-  tr.appendChild(linkTd);
-  tr.appendChild(actionsTd);
+                    <!-- TODO: Add a 'label' and 'input' for the resource link.
+                         - label 'for': "resource-link"
+                         - input 'id': "resource-link", type="url", required -->
+                    <label for="resource-link">Link</label>
+                    <input type="url" id="resource-link" required>
 
-  return tr;
-}
+                    <!-- TODO: Add a 'button' to submit the form.
+                         - id="add-resource", type="submit", Text: "Add Resource" -->
+                    <button type="submit" id="add-resource">Add Resource</button>
 
-function renderTable() {
-  resourcesTbody.innerHTML = "";
+                </fieldset>
+                <!-- End of fieldset. -->
 
-  resources.forEach(function(resource) {
-    const row = createResourceRow(resource);
-    resourcesTbody.appendChild(row);
-  });
-}
+            </form>
+            <!-- End of form. -->
 
-async function handleAddResource(event) {
-  event.preventDefault();
+        </section>
+        <!-- End of form section. -->
 
-  const title       = document.getElementById("resource-title").value.trim();
-  const description = document.getElementById("resource-description").value.trim();
-  const link        = document.getElementById("resource-link").value.trim();
+        <!-- Section 2: Existing Resources List -->
+        <!-- TODO: Create a 'section' to display the list of current resources. -->
+        <section>
+            <!-- TODO: Add a sub-heading ('h2') "Existing Resources". -->
+            <h2>Existing Resources</h2>
 
-  try {
-    const response = await fetch("./api/index.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, link })
-    });
+            <!-- TODO: Create a 'table' with id="resources-table". -->
+            <table id="resources-table">
 
-    const result = await response.json();
+                <!-- TODO: Create a 'thead' and a 'tr' inside it. -->
+                <thead>
+                    <tr>
+                        <!-- TODO: Add 'th' elements for "Title", "Description", "Link", and "Actions". -->
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Link</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
 
-    if (result.success) {
-      resources.push({ id: result.id, title, description, link });
-      renderTable();
-      resourceForm.reset();
-    } else {
-      alert(result.message || "An error occurred.");
-    }
-  } catch (error) {
-    alert("An error occurred: " + error.message);
-  }
-}
+                <!-- TODO: Create a 'tbody' with id="resources-tbody".
+                     This id is required by admin.js.
+                     Rows will be injected here dynamically by admin.js. -->
+                <tbody id="resources-tbody">
+                    <!-- Each row follows this structure: -->
+                    <!-- TODO: Create a 'tr' for each resource. -->
+                        <!-- TODO: Add a 'td' for the title. -->
+                        <!-- TODO: Add a 'td' for the description. -->
+                        <!-- TODO: Add a 'td' for the link. -->
+                        <!-- TODO: Add a 'td' containing the action buttons. -->
+                            <!-- TODO: Add an "Edit" button with class="edit-btn"
+                                 and data-id set to the resource's id. -->
+                            <!-- TODO: Add a "Delete" button with class="delete-btn"
+                                 and data-id set to the resource's id. -->
+                        <!-- End of actions 'td'. -->
+                    <!-- End of the row. -->
+                </tbody>
+                <!-- End of tbody. -->
 
-function handleTableClick(event) {
-  const target = event.target;
+            </table>
+            <!-- End of table. -->
 
-  if (target.classList.contains("delete-btn")) {
-    const id = parseInt(target.dataset.id);
+        </section>
+        <!-- End of resources list section. -->
 
-    fetch("./api/index.php?id=" + id, {
-      method: "DELETE"
-    })
-      .then(function(response) { return response.json(); })
-      .then(function(result) {
-        if (result.success) {
-          resources = resources.filter(function(r) { return r.id !== id; });
-          renderTable();
-        } else {
-          alert(result.message || "An error occurred.");
-        }
-      })
-      .catch(function(error) {
-        alert("An error occurred: " + error.message);
-      });
-  }
+    </main>
+    <!-- End of main. -->
 
-  if (target.classList.contains("edit-btn")) {
-    const id = parseInt(target.dataset.id);
-
-    const resource = resources.find(function(r) { return r.id === id; });
-    if (!resource) return;
-
-    document.getElementById("resource-title").value       = resource.title;
-    document.getElementById("resource-description").value = resource.description;
-    document.getElementById("resource-link").value        = resource.link;
-
-    const addBtn = document.getElementById("add-resource");
-    addBtn.textContent = "Update Resource";
-
-    const newForm = resourceForm.cloneNode(true);
-    resourceForm.parentNode.replaceChild(newForm, resourceForm);
-
-    newForm.addEventListener("submit", async function handleUpdate(event) {
-      event.preventDefault();
-
-      const title       = document.getElementById("resource-title").value.trim();
-      const description = document.getElementById("resource-description").value.trim();
-      const link        = document.getElementById("resource-link").value.trim();
-
-      try {
-        const response = await fetch("./api/index.php", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, title, description, link })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          resources = resources.map(function(r) {
-            return r.id === id ? { id, title, description, link } : r;
-          });
-
-          renderTable();
-          newForm.reset();
-
-          document.getElementById("add-resource").textContent = "Add Resource";
-
-          newForm.removeEventListener("submit", handleUpdate);
-          newForm.addEventListener("submit", handleAddResource);
-        } else {
-          alert(result.message || "An error occurred.");
-        }
-      } catch (error) {
-        alert("An error occurred: " + error.message);
-      }
-    });
-  }
-}
-
-async function loadAndInitialize() {
-  try {
-    const response = await fetch("./api/index.php");
-
-    if (!response.ok) {
-      console.error("Failed to fetch resources:", response.statusText);
-      alert("Failed to load resources from the server.");
-      return;
-    }
-
-    const result = await response.json();
-    resources = result.data;
-    renderTable();
-
-    resourceForm.addEventListener("submit", handleAddResource);
-    resourcesTbody.addEventListener("click", handleTableClick);
-  } catch (error) {
-    console.error("Error:", error);
-    alert("An error occurred while loading resources: " + error.message);
-  }
-}
-
-loadAndInitialize();
+</body>
+</html>
