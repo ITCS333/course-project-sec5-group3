@@ -1,5 +1,3 @@
-// admin.js
-
 let resources = [];
 const resourceForm = document.getElementById("resource-form");
 const resourcesTbody = document.getElementById("resources-tbody");
@@ -7,82 +5,77 @@ let editingId = null;
 
 function createResourceRow(resource) {
   const tr = document.createElement("tr");
-
   const titleTd = document.createElement("td");
   titleTd.textContent = resource.title;
-
   const descriptionTd = document.createElement("td");
   descriptionTd.textContent = resource.description;
-
   const linkTd = document.createElement("td");
   linkTd.textContent = resource.link;
-
   const actionsTd = document.createElement("td");
-
   const editBtn = document.createElement("button");
   editBtn.textContent = "Edit";
   editBtn.className = "edit-btn";
   editBtn.dataset.id = resource.id;
-
   const deleteBtn = document.createElement("button");
   deleteBtn.textContent = "Delete";
   deleteBtn.className = "delete-btn";
   deleteBtn.dataset.id = resource.id;
-
   actionsTd.appendChild(editBtn);
   actionsTd.appendChild(deleteBtn);
-
   tr.appendChild(titleTd);
   tr.appendChild(descriptionTd);
   tr.appendChild(linkTd);
   tr.appendChild(actionsTd);
-
   return tr;
 }
 
-function renderTable() {
+function renderTable(arr) {
+  const list = arr !== undefined ? arr : resources;
   resourcesTbody.innerHTML = "";
-  resources.forEach(function(resource) {
+  list.forEach(function(resource) {
     resourcesTbody.appendChild(createResourceRow(resource));
   });
 }
 
-async function handleAddResource(event) {
+function handleAddResource(event) {
   event.preventDefault();
-
   const title       = document.getElementById("resource-title").value.trim();
   const description = document.getElementById("resource-description").value.trim();
   const link        = document.getElementById("resource-link").value.trim();
   const addBtn      = document.getElementById("add-resource");
 
   if (editingId !== null) {
-    const response = await fetch("./api/index.php", {
+    fetch("./api/index.php", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: editingId, title, description, link })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+      if (result.success) {
+        resources = resources.map(function(r) {
+          return r.id === editingId ? { id: editingId, title, description, link } : r;
+        });
+        renderTable();
+        resourceForm.reset();
+        editingId = null;
+        addBtn.textContent = "Add Resource";
+      }
     });
-    const result = await response.json();
-    if (result.success) {
-      resources = resources.map(function(r) {
-        return r.id === editingId ? { id: editingId, title, description, link } : r;
-      });
-      renderTable();
-      resourceForm.reset();
-      editingId = null;
-      addBtn.textContent = "Add Resource";
-    }
   } else {
-    const response = await fetch("./api/index.php", {
+    fetch("./api/index.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, description, link })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+      if (result.success) {
+        resources.push({ id: result.id, title, description, link });
+        renderTable();
+        resourceForm.reset();
+      }
     });
-    const result = await response.json();
-    if (result.success) {
-      resources.push({ id: result.id, title, description, link });
-      renderTable();
-      resourceForm.reset();
-    }
   }
 }
 
