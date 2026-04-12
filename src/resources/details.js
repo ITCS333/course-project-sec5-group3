@@ -1,4 +1,4 @@
-// details.js
+
 
 let currentResourceId = null;
 let currentComments   = [];
