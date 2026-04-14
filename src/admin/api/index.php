@@ -1,18 +1,15 @@
 <?php
-// --- إعدادات الـ Headers ---
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-// --- التعامل مع Preflight OPTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-// --- الاتصال بقاعدة البيانات ---
-require_once 'db_connection.php'; // تأكد أن ملف الاتصال يحتوي على دالة getDBConnection()
+require_once 'db_connection.php'; 
 $db = getDBConnection();
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -20,19 +17,18 @@ $data = json_decode(file_get_contents('php://input'), true);
 $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 $action = $_GET['action'] ?? null;
 
-// --- الدوال الأساسية ---
+
 
 function getUsers($db) {
     $sql = "SELECT id, name, email, is_admin, created_at FROM users";
     $params = [];
     
-    // الفلترة
+    
     if (!empty($_GET['search'])) {
         $sql .= " WHERE name LIKE :search OR email LIKE :search";
         $params['search'] = '%' . $_GET['search'] . '%';
     }
 
-    // الترتيب
     $allowed = ['name', 'email', 'is_admin'];
     $sort = in_array($_GET['sort'] ?? '', $allowed) ? $_GET['sort'] : 'id';
     $order = (isset($_GET['order']) && strtolower($_GET['order']) === 'desc') ? 'DESC' : 'ASC';
@@ -117,7 +113,6 @@ function changePassword($db, $data) {
     sendResponse("Password updated");
 }
 
-// --- الموجه الرئيسي ---
 try {
     if ($method === 'GET') { $id ? getUserById($db, $id) : getUsers($db); }
     elseif ($method === 'POST') { $action === 'change_password' ? changePassword($db, $data) : createUser($db, $data); }
@@ -126,7 +121,6 @@ try {
     else { sendResponse("Method Not Allowed", 405); }
 } catch (Exception $e) { sendResponse("Internal Server Error", 500); }
 
-// --- دوال المساعدة ---
 function sendResponse($data, $statusCode = 200) {
     http_response_code($statusCode);
     echo json_encode($statusCode < 400 ? ['success' => true, 'data' => $data] : ['success' => false, 'message' => $data]);
