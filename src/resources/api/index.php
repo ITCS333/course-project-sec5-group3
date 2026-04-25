@@ -132,7 +132,26 @@ function deleteResource($db,$id){
 
     sendResponse(["success"=>true]);
 }
+function createUser($db,$data){
 
+    if(empty($data['username']) || empty($data['email'])){
+        sendResponse(["success"=>false],400);
+    }
+
+    $stmt = $db->prepare("INSERT INTO users (username,email) VALUES (?,?)");
+    $stmt->execute([
+        sanitizeInput($data['username']),
+        sanitizeInput($data['email'])
+    ]);
+
+    sendResponse([
+        "success"=>true,
+        "data"=>[
+            "username"=>$data['username'],
+            "email"=>$data['email']
+        ]
+    ],201);
+}
 // ================= COMMENTS =================
 function getCommentsByResourceId($db,$rid){
     if(!is_numeric($rid)) sendResponse(["success"=>false],400);
@@ -193,8 +212,20 @@ if($method==="GET"){
 }
 
 elseif($method==="POST"){
-    if($action==="comment") createComment($db,$data);
-    else createResource($db,$data);
+
+    //
+    if(isset($data['username']) || isset($data['email'])){
+        createUser($db,$data);
+    }
+
+    elseif($action==="comment"){
+        createComment($db,$data);
+    }
+
+    else{
+        createResource($db,$data);
+    }
+}
 }
 
 elseif($method==="PUT"){
