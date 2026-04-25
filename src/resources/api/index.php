@@ -48,7 +48,10 @@ function getAllResources($db) {
     $stmt->execute();
     $res = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    sendResponse(["success"=>true,"data"=>$res]);
+    sendResponse([
+    "success"=>true,
+    "data"=>array_values($res)
+]);
 }
 
 function getResourceById($db,$id){
@@ -60,7 +63,10 @@ function getResourceById($db,$id){
 
     if(!$res) sendResponse(["success"=>false,"message"=>"Resource not found"],404);
 
-    sendResponse(["success"=>true,"data"=>$res]);
+    sendResponse([
+    "success"=>true,
+    "data"=>$res ?? null
+]);
 }
 
 function createResource($db,$data){
@@ -76,7 +82,15 @@ function createResource($db,$data){
     $stmt=$db->prepare("INSERT INTO resources(title,description,link) VALUES(?,?,?)");
     $stmt->execute([$title,$desc,$link]);
 
-    sendResponse(["success"=>true,"message"=>"Created","id"=>$db->lastInsertId()],201);
+    sendResponse([
+    "success"=>true,
+    "data"=>[
+        "id"=>$db->lastInsertId(),
+        "title"=>$title,
+        "description"=>$desc,
+        "link"=>$link
+    ]
+],201);
 }
 
 function updateResource($db,$data){
@@ -95,7 +109,15 @@ function updateResource($db,$data){
     $stmt=$db->prepare("UPDATE resources SET title=?,description=?,link=? WHERE id=?");
     $stmt->execute([$title,$desc,$link,$data['id']]);
 
-    sendResponse(["success"=>true]);
+    sendResponse([
+    "success"=>true,
+    "data"=>[
+        "id"=>$data['id'],
+        "title"=>$title,
+        "description"=>$desc,
+        "link"=>$link
+    ]
+]);
 }
 
 function deleteResource($db,$id){
@@ -137,7 +159,15 @@ function createComment($db,$data){
     $stmt=$db->prepare("INSERT INTO comments_resource(resource_id,author,text) VALUES(?,?,?)");
     $stmt->execute([$data['resource_id'],$author,$text]);
 
-    sendResponse(["success"=>true,"id"=>$db->lastInsertId()],201);
+    sendResponse([
+    "success"=>true,
+    "data"=>[
+        "id"=>$db->lastInsertId(),
+        "resource_id"=>$data['resource_id'],
+        "author"=>$author,
+        "text"=>$text
+    ]
+],201);
 }
 
 function deleteComment($db,$cid){
