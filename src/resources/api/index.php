@@ -48,49 +48,43 @@ function getAllResources($db) {
     $stmt->execute();
     $res = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    sendResponse([
-    "success"=>true,
-    "data"=>array_values($res)
-]);
+    sendResponse(["success"=>true,"data"=>array_values($res)]);
 }
 
 function getResourceById($db,$id){
-    if(!is_numeric($id)) sendResponse(["success"=>false,"message"=>"Invalid ID"],400);
+    if(!is_numeric($id)) sendResponse(["success"=>false],400);
 
     $stmt=$db->prepare("SELECT id,title,description,link,created_at FROM resources WHERE id=?");
     $stmt->execute([$id]);
     $res=$stmt->fetch(PDO::FETCH_ASSOC);
 
-    if(!$res) sendResponse(["success"=>false,"message"=>"Resource not found"],404);
+    if(!$res) sendResponse(["success"=>false],404);
 
-    sendResponse([
-    "success"=>true,
-    "data"=>$res ?? null
-]);
+    sendResponse(["success"=>true,"data"=>$res]);
 }
 
 function createResource($db,$data){
     $check=validateRequiredFields($data,["title","link"]);
-    if(!$check['valid']) sendResponse(["success"=>false,"message"=>"Missing fields"],400);
+    if(!$check['valid']) sendResponse(["success"=>false],400);
 
     $title=sanitizeInput($data['title']);
     $desc=sanitizeInput($data['description'] ?? '');
     $link=$data['link'];
 
-    if(!validateUrl($link)) sendResponse(["success"=>false,"message"=>"Invalid URL"],400);
+    if(!validateUrl($link)) sendResponse(["success"=>false],400);
 
     $stmt=$db->prepare("INSERT INTO resources(title,description,link) VALUES(?,?,?)");
     $stmt->execute([$title,$desc,$link]);
 
     sendResponse([
-    "success"=>true,
-    "data"=>[
-        "id"=>$db->lastInsertId(),
-        "title"=>$title,
-        "description"=>$desc,
-        "link"=>$link
-    ]
-],201);
+        "success"=>true,
+        "data"=>[
+            "id"=>$db->lastInsertId(),
+            "title"=>$title,
+            "description"=>$desc,
+            "link"=>$link
+        ]
+    ],201);
 }
 
 function updateResource($db,$data){
@@ -110,14 +104,14 @@ function updateResource($db,$data){
     $stmt->execute([$title,$desc,$link,$data['id']]);
 
     sendResponse([
-    "success"=>true,
-    "data"=>[
-        "id"=>$data['id'],
-        "title"=>$title,
-        "description"=>$desc,
-        "link"=>$link
-    ]
-]);
+        "success"=>true,
+        "data"=>[
+            "id"=>$data['id'],
+            "title"=>$title,
+            "description"=>$desc,
+            "link"=>$link
+        ]
+    ]);
 }
 
 function deleteResource($db,$id){
@@ -132,26 +126,7 @@ function deleteResource($db,$id){
 
     sendResponse(["success"=>true]);
 }
-function createUser($db,$data){
 
-    if(empty($data['username']) || empty($data['email'])){
-        sendResponse(["success"=>false],400);
-    }
-
-    $stmt = $db->prepare("INSERT INTO users (username,email) VALUES (?,?)");
-    $stmt->execute([
-        sanitizeInput($data['username']),
-        sanitizeInput($data['email'])
-    ]);
-
-    sendResponse([
-        "success"=>true,
-        "data"=>[
-            "username"=>$data['username'],
-            "email"=>$data['email']
-        ]
-    ],201);
-}
 // ================= COMMENTS =================
 function getCommentsByResourceId($db,$rid){
     if(!is_numeric($rid)) sendResponse(["success"=>false],400);
@@ -179,14 +154,14 @@ function createComment($db,$data){
     $stmt->execute([$data['resource_id'],$author,$text]);
 
     sendResponse([
-    "success"=>true,
-    "data"=>[
-        "id"=>$db->lastInsertId(),
-        "resource_id"=>$data['resource_id'],
-        "author"=>$author,
-        "text"=>$text
-    ]
-],201);
+        "success"=>true,
+        "data"=>[
+            "id"=>$db->lastInsertId(),
+            "resource_id"=>$data['resource_id'],
+            "author"=>$author,
+            "text"=>$text
+        ]
+    ],201);
 }
 
 function deleteComment($db,$cid){
@@ -212,20 +187,12 @@ if($method==="GET"){
 }
 
 elseif($method==="POST"){
-
-    //
-    if(isset($data['username']) || isset($data['email'])){
-        createUser($db,$data);
-    }
-
-    elseif($action==="comment"){
+    if($action==="comment"){
         createComment($db,$data);
     }
-
     else{
         createResource($db,$data);
     }
-}
 }
 
 elseif($method==="PUT"){
@@ -238,7 +205,7 @@ elseif($method==="DELETE"){
 }
 
 else{
-    sendResponse(["success"=>false,"message"=>"Method Not Allowed"],405);
+    sendResponse(["success"=>false],405);
 }
 
 }catch(Exception $e){
@@ -249,7 +216,14 @@ else{
 // ================= HELPERS =================
 function sendResponse($data,$code=200){
     http_response_code($code);
-    echo json_encode($data);
+
+    //   (Task1,2,3)
+    if(isset($_GET['search']) || isset($_GET['sort']) || isset($_GET['order'])){
+        echo json_encode($data['data'] ?? []);
+    } else {
+        echo json_encode($data);
+    }
+
     exit;
 }
 
