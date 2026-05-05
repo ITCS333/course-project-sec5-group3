@@ -1,3 +1,4 @@
+
 <?php
 
 // ================= HEADERS =================
@@ -20,25 +21,17 @@ $db = $database->getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);
 
-// ================= HELPERS =================
-function sendResponse($data,$code=200){
-    http_response_code($code);
-    echo json_encode($data);
-    exit;
-}
+$action = $_GET['action'] ?? null;
+$id = $_GET['id'] ?? null;
+$resource_id = $_GET['resource_id'] ?? null;
+$comment_id = $_GET['comment_id'] ?? null;
+$user_id = $_GET['user_id'] ?? null;
 
-function sanitizeInput($d){
-    return htmlspecialchars(strip_tags(trim($d)),ENT_QUOTES,'UTF-8');
-}
 
 // ================= USERS =================
-function getAllUsers($db,$search=null){
-    if($search){
-        $stmt = $db->prepare("SELECT id,name,email FROM users WHERE name LIKE ?");
-        $stmt->execute(['%'.$search.'%']);
-    } else {
-        $stmt = $db->query("SELECT id,name,email FROM users");
-    }
+function getAllUsers($db){
+    $stmt = $db->prepare("SELECT id,name,email FROM users");
+    $stmt->execute();
     sendResponse(["success"=>true,"data"=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
@@ -55,6 +48,7 @@ function getUserById($db,$id){
 }
 
 function createUser($db,$data){
+
     if(empty($data['name']) || empty($data['email']) || empty($data['password'])){
         sendResponse(["success"=>false],400);
     }
@@ -78,23 +72,30 @@ function createUser($db,$data){
 }
 
 function updateUser($db,$data){
+
     if(empty($data['id'])) sendResponse(["success"=>false],400);
 
     $stmt = $db->prepare("SELECT id FROM users WHERE id=?");
     $stmt->execute([$data['id']]);
+
     if(!$stmt->fetch()) sendResponse(["success"=>false],404);
 
     $stmt = $db->prepare("UPDATE users SET name=? WHERE id=?");
-    $stmt->execute([sanitizeInput($data['name']), $data['id']]);
+    $stmt->execute([
+        sanitizeInput($data['name']),
+        $data['id']
+    ]);
 
     sendResponse(["success"=>true]);
 }
 
 function deleteUser($db,$id){
+
     if(!is_numeric($id)) sendResponse(["success"=>false],400);
 
     $stmt = $db->prepare("SELECT id FROM users WHERE id=?");
     $stmt->execute([$id]);
+
     if(!$stmt->fetch()) sendResponse(["success"=>false],404);
 
     $stmt = $db->prepare("DELETE FROM users WHERE id=?");
@@ -103,37 +104,11 @@ function deleteUser($db,$id){
     sendResponse(["success"=>true]);
 }
 
-function changePassword($db,$data){
-    if(empty($data['user_id']) || empty($data['current_password']) || empty($data['new_password'])){
-        sendResponse(["success"=>false],400);
-    }
-
-    if(strlen($data['new_password']) < 6){
-        sendResponse(["success"=>false],400);
-    }
-
-    $stmt = $db->prepare("SELECT password FROM users WHERE id=?");
-    $stmt->execute([$data['user_id']]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if(!$user) sendResponse(["success"=>false],404);
-
-    if(!password_verify($data['current_password'],$user['password'])){
-        sendResponse(["success"=>false],401);
-    }
-
-    $stmt = $db->prepare("UPDATE users SET password=? WHERE id=?");
-    $stmt->execute([
-        password_hash($data['new_password'], PASSWORD_DEFAULT),
-        $data['user_id']
-    ]);
-
-    sendResponse(["success"=>true]);
-}
 
 // ================= RESOURCES =================
-function getAllResources($db){
-    $stmt = $db->query("SELECT id,title,description,link,created_at FROM resources");
+function getAllResources($db) {
+    $stmt = $db->prepare("SELECT id,title,description,link,created_at FROM resources ORDER BY created_at DESC");
+    $stmt->execute();
     sendResponse(["success"=>true,"data"=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
@@ -149,80 +124,143 @@ function getResourceById($db,$id){
     sendResponse(["success"=>true,"data"=>$res]);
 }
 
-// ================= WEEKS =================
-function getAllWeeks($db){
-    $stmt = $db->query("SELECT * FROM weeks");
+function createResource($db,$data){
+    if(empty($data['title']) || empty($data['link'])){
+        sendResponse(["success"=>false],400);
+    }
+
+    $stmt=$db->prepare("INSERT INTO resources(title,description,link) VALUES(?,?,?)");
+    $stmt->execute([
+        sanitizeInput($data['title']),
+        sanitizeInput($data['description'] ?? ''),
+        $data['link']
+    ]);
+
+    sendResponse(["success"=>true],201);
+}
+
+function updateResource($db,$data){
+    if(empty($data['id'])) sendResponse(["success"=>false],400);
+
+    $stmt=$db->prepare("UPDATE resources SET title=?,description=?,link=? WHERE id=?");
+    $stmt->execute([
+        $data['title'],
+        $data['description'],
+        $data['link'],
+        $data['id']
+    ]);
+
+    sendResponse(["success"=>true]);
+}
+
+function deleteResource($db,$id){
+    if(!is_numeric($id)) sendResponse(["success"=>false],400);
+
+    $stmt=$db->prepare("DELETE FROM resources WHERE id=?");
+    $stmt->execute([$id]);
+
+    sendResponse(["success"=>true]);
+}
+
+
+// ================= COMMENTS =================
+function getCommentsByResourceId($db,$rid){
+    $stmt=$db->prepare("SELECT * FROM comments_resource WHERE resource_id=?");
+    $stmt->execute([$rid]);
     sendResponse(["success"=>true,"data"=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
+
+function createComment($db,$data){
+    $stmt=$db->prepare("INSERT INTO comments_resource(resource_id,author,text) VALUES(?,?,?)");
+    $stmt->execute([$data['resource_id'],$data['author'],$data['text']]);
+
+    sendResponse(["success"=>true],201);
+}
+
+function deleteComment($db,$cid){
+    $stmt=$db->prepare("DELETE FROM comments_resource WHERE id=?");
+    $stmt->execute([$cid]);
+
+    sendResponse(["success"=>true]);
+}
+
 
 // ================= ROUTER =================
 try {
 
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$segments = explode('/', trim($path,'/'));
+if($method==="GET"){
 
-$entity = $segments[count($segments)-2] ?? null;
-$id = $segments[count($segments)-1] ?? null;
-
-// USERS
-if($entity === "users"){
-
-    if($method === "GET"){
-        if(is_numeric($id)){
-            getUserById($db,$id);
-        } else {
-            getAllUsers($db,$_GET['search'] ?? null);
-        }
+    if($user_id){
+        getUserById($db,$user_id);
     }
-
-    elseif($method === "POST"){
-        if(isset($data['current_password'])){
-            changePassword($db,$data);
-        } else {
-            createUser($db,$data);
-        }
+    elseif(isset($_GET['users'])){
+        getAllUsers($db);
     }
+    elseif($action==="comments"){
+        getCommentsByResourceId($db,$resource_id);
+    }
+    elseif($id){
+        getResourceById($db,$id);
+    }
+    else{
+        getAllResources($db);
+    }
+}
 
-    elseif($method === "PUT"){
+elseif($method==="POST"){
+
+    if(isset($data['name']) && isset($data['email'])){
+        createUser($db,$data);
+    }
+    elseif($action==="comment"){
+        createComment($db,$data);
+    }
+    else{
+        createResource($db,$data);
+    }
+}
+
+elseif($method==="PUT"){
+
+    if(isset($data['name'])){
         updateUser($db,$data);
+    } else {
+        updateResource($db,$data);
     }
-
-    elseif($method === "DELETE"){
-        deleteUser($db,$id);
-    }
-
-    else sendResponse(["success"=>false],405);
 }
 
-// RESOURCES
-elseif($entity === "resources"){
+elseif($method==="DELETE"){
 
-    if($method === "GET"){
-        if(is_numeric($id)){
-            getResourceById($db,$id);
-        } else {
-            getAllResources($db);
-        }
+    if($user_id){
+        deleteUser($db,$user_id);
     }
-
-    else sendResponse(["success"=>false],405);
-}
-
-// WEEKS
-elseif($entity === "weeks"){
-
-    if($method === "GET"){
-        getAllWeeks($db);
+    elseif($action==="delete_comment"){
+        deleteComment($db,$comment_id);
     }
-
-    else sendResponse(["success"=>false],405);
+    else{
+        deleteResource($db,$id);
+    }
 }
 
 else{
-    sendResponse(["success"=>false],404);
+    sendResponse(["success"=>false],405);
 }
 
 }catch(Exception $e){
+    error_log($e->getMessage());
     sendResponse(["success"=>false],500);
 }
+
+
+// ================= HELPERS =================
+function sendResponse($data,$code=200){
+    http_response_code($code);
+    echo json_encode($data);
+    exit;
+}
+
+function sanitizeInput($d){
+    return htmlspecialchars(strip_tags(trim($d)),ENT_QUOTES,'UTF-8');
+}
+
 ?>
