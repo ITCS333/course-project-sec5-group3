@@ -18,15 +18,24 @@ const tableHeaders = document.querySelectorAll("#user-table thead th");
 function createUserRow(user) {
     const tr = document.createElement("tr");
 
-    tr.innerHTML = `
-        <td>${user.name}</td>
-        <td>${user.email}</td>
-        <td>${user.is_admin === 1 ? "Yes" : "No"}</td>
-        <td>
-            <button class="edit-btn" data-id="${user.id}">Edit</button>
-            <button class="delete-btn" data-id="${user.id}">Delete</button>
-        </td>
-    `;
+    let adminText;
+
+    if (user.is_admin == 1) {
+        adminText = "Yes";
+    } 
+    else {
+        adminText = "No";
+    }
+
+    tr.innerHTML =
+        "<td>" + user.name + "</td>" +
+        "<td>" + user.email + "</td>" +
+        "<td>" + adminText + "</td>" +
+        "<td>" +
+        "<button class='edit-btn' data-id='" + user.id + "'>Edit</button>" +
+        "<button class='delete-btn' data-id='" + user.id + "'>Delete</button>" +
+        "</td>";
+
     return tr;
 }
 
