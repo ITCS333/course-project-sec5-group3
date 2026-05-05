@@ -16,8 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // --- Get POST Data ---
-$input = file_get_contents('php://input');
-$data = json_decode($input, true);
+$data = !empty($_POST) ? $_POST : json_decode(file_get_contents('php://input'), true);
 
 // --- Validate Input Existence ---
 if (!isset($data['email']) || !isset($data['password'])) {
