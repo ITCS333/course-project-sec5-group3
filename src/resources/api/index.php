@@ -125,10 +125,6 @@ function createResource($db,$data){
         sendResponse(["success"=>false],400);
     }
 
-    if(!filter_var($data['link'], FILTER_VALIDATE_URL)){
-        sendResponse(["success"=>false],400);
-    }
-
     $stmt=$db->prepare("INSERT INTO resources(title,description,link) VALUES(?,?,?)");
     $stmt->execute([
         sanitizeInput($data['title']),
@@ -136,7 +132,7 @@ function createResource($db,$data){
         $data['link']
     ]);
 
-    sendResponse(["success"=>true,"id"=>$db->lastInsertId()],201);
+    sendResponse(["success"=>true],201);
 }
 
 function updateResource($db,$data){
@@ -146,10 +142,6 @@ function updateResource($db,$data){
     $stmt->execute([$data['id']]);
 
     if(!$stmt->fetch()) sendResponse(["success"=>false],404);
-
-    if(isset($data['link']) && !filter_var($data['link'], FILTER_VALIDATE_URL)){
-        sendResponse(["success"=>false],400);
-    }
 
     $stmt=$db->prepare("UPDATE resources SET title=?,description=?,link=? WHERE id=?");
     $stmt->execute([
@@ -192,11 +184,6 @@ function createComment($db,$data){
         sendResponse(["success"=>false],400);
     }
 
-    $stmt=$db->prepare("SELECT id FROM resources WHERE id=?");
-    $stmt->execute([$data['resource_id']]);
-
-    if(!$stmt->fetch()) sendResponse(["success"=>false],404);
-
     $stmt=$db->prepare("INSERT INTO comments_resource(resource_id,author,text) VALUES(?,?,?)");
     $stmt->execute([
         $data['resource_id'],
@@ -204,7 +191,7 @@ function createComment($db,$data){
         sanitizeInput($data['text'])
     ]);
 
-    sendResponse(["success"=>true,"id"=>$db->lastInsertId()],201);
+    sendResponse(["success"=>true],201);
 }
 
 function deleteComment($db,$cid){
@@ -226,14 +213,14 @@ try {
 
 if($method==="GET"){
 
-    if($action==="comments"){
-        getCommentsByResourceId($db,$resource_id);
+    if(isset($_GET['user_id'])){
+        getUserById($db,$_GET['user_id']);
     }
     elseif(isset($_GET['users'])){
         getAllUsers($db);
     }
-    elseif(isset($_GET['user_id'])){
-        getUserById($db,$_GET['user_id']);
+    elseif($action==="comments"){
+        getCommentsByResourceId($db,$resource_id);
     }
     elseif($id){
         getResourceById($db,$id);
@@ -245,11 +232,11 @@ if($method==="GET"){
 
 elseif($method==="POST"){
 
-    if($action==="comment"){
-        createComment($db,$data);
-    }
-    elseif(isset($data['name']) && isset($data['email'])){
+    if(isset($data['name']) && isset($data['email'])){
         createUser($db,$data);
+    }
+    elseif($action==="comment"){
+        createComment($db,$data);
     }
     else{
         createResource($db,$data);
@@ -267,11 +254,11 @@ elseif($method==="PUT"){
 
 elseif($method==="DELETE"){
 
-    if($action==="delete_comment"){
-        deleteComment($db,$comment_id);
-    }
-    elseif(isset($_GET['user_id'])){
+    if(isset($_GET['user_id'])){
         deleteUser($db,$_GET['user_id']);
+    }
+    elseif($action==="delete_comment"){
+        deleteComment($db,$comment_id);
     }
     else{
         deleteResource($db,$id);
