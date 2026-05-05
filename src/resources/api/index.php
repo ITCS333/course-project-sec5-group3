@@ -3,163 +3,198 @@
 header("Content-Type: application/json");
 
 require_once './config/Database.php';
+
 $database = new Database();
 $db = $database->getConnection();
 
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);
 
-$action = $_GET['action'] ?? null;
-$id = $_GET['id'] ?? null;
-$search = $_GET['search'] ?? null;
+// ================= RESOURCES =================
 
-// ================= USERS =================
+// GET ALL
+function getAllResources($db){
+    $stmt = $db->prepare("SELECT id,title,description,link FROM resources");
+    $stmt->execute();
 
-function getAllUsers($db, $search){
-    if($search){
-        $stmt = $db->prepare("SELECT id,name,email FROM users WHERE name LIKE ?");
-        $stmt->execute(["%$search%"]);
-    } else {
-        $stmt = $db->prepare("SELECT id,name,email FROM users");
-        $stmt->execute();
-    }
-
-    sendResponse(["success"=>true,"data"=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    sendResponse([
+        "success" => true,
+        "data" => $stmt->fetchAll(PDO::FETCH_ASSOC)
+    ]);
 }
 
-function getUserById($db,$id){
-    if(!is_numeric($id)) sendResponse(["success"=>false],400);
+// GET BY ID
+function getResourceById($db, $id){
+    if(!is_numeric($id)){
+        sendResponse(["success"=>false],400);
+    }
 
-    $stmt = $db->prepare("SELECT id,name,email FROM users WHERE id=?");
+    $stmt = $db->prepare("SELECT id,title,description,link FROM resources WHERE id=?");
     $stmt->execute([$id]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if(!$user) sendResponse(["success"=>false],404);
+    $resource = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    sendResponse(["success"=>true,"data"=>$user]);
+    if(!$resource){
+        sendResponse(["success"=>false],404);
+    }
+
+    sendResponse([
+        "success"=>true,
+        "data"=>$resource
+    ]);
 }
 
-function createUser($db,$data){
+// CREATE
+function createResource($db, $data){
 
-    if(empty($data['name']) || empty($data['email']) || empty($data['password'])){
+    if(empty($data['title']) || empty($data['description']) || empty($data['link'])){
         sendResponse(["success"=>false],400);
     }
 
-    if(strlen($data['password']) < 6){
-        sendResponse(["success"=>false],400);
-    }
+    $stmt = $db->prepare("INSERT INTO resources(title,description,link) VALUES(?,?,?)");
 
-    try{
-        $stmt = $db->prepare("INSERT INTO users(name,email,password) VALUES(?,?,?)");
-        $stmt->execute([
-            $data['name'],
-            $data['email'],
-            password_hash($data['password'], PASSWORD_DEFAULT)
-        ]);
-    }catch(Exception $e){
-        sendResponse(["success"=>false],409);
-    }
+    $stmt->execute([
+        $data['title'],
+        $data['description'],
+        $data['link']
+    ]);
 
     sendResponse(["success"=>true],201);
 }
 
-function updateUser($db,$data){
+// DELETE
+function deleteResource($db, $id){
 
-    if(empty($data['id'])) sendResponse(["success"=>false],400);
+    if(!is_numeric($id)){
+        sendResponse(["success"=>false],400);
+    }
 
-    $stmt = $db->prepare("SELECT id FROM users WHERE id=?");
-    $stmt->execute([$data['id']]);
-
-    if(!$stmt->fetch()) sendResponse(["success"=>false],404);
-
-    $stmt = $db->prepare("UPDATE users SET name=? WHERE id=?");
-    $stmt->execute([$data['name'],$data['id']]);
-
-    sendResponse(["success"=>true]);
-}
-
-function deleteUser($db,$id){
-
-    if(!is_numeric($id)) sendResponse(["success"=>false],400);
-
-    $stmt = $db->prepare("SELECT id FROM users WHERE id=?");
+    $stmt = $db->prepare("SELECT id FROM resources WHERE id=?");
     $stmt->execute([$id]);
 
-    if(!$stmt->fetch()) sendResponse(["success"=>false],404);
+    if(!$stmt->fetch()){
+        sendResponse(["success"=>false],404);
+    }
 
-    $stmt = $db->prepare("DELETE FROM users WHERE id=?");
+    $stmt = $db->prepare("DELETE FROM resources WHERE id=?");
     $stmt->execute([$id]);
 
     sendResponse(["success"=>true]);
 }
 
-// ⭐ CHANGE PASSWORD (مهم جدًا للتست)
-function changePassword($db,$data){
+// ================= COMMENTS =================
 
-    if(empty($data['id']) || empty($data['current_password']) || empty($data['new_password'])){
+// GET COMMENTS BY RESOURCE
+function getComments($db, $resource_id){
+
+    if(!is_numeric($resource_id)){
         sendResponse(["success"=>false],400);
     }
 
-    if(strlen($data['new_password']) < 6){
-        sendResponse(["success"=>false],400);
-    }
+    $stmt = $db->prepare("SELECT id,resource_id,author,text FROM comments_resource WHERE resource_id=?");
+    $stmt->execute([$resource_id]);
 
-    $stmt = $db->prepare("SELECT password FROM users WHERE id=?");
-    $stmt->execute([$data['id']]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if(!$user) sendResponse(["success"=>false],404);
-
-    if(!password_verify($data['current_password'],$user['password'])){
-        sendResponse(["success"=>false],401);
-    }
-
-    $stmt = $db->prepare("UPDATE users SET password=? WHERE id=?");
-    $stmt->execute([
-        password_hash($data['new_password'], PASSWORD_DEFAULT),
-        $data['id']
+    sendResponse([
+        "success"=>true,
+        "data"=>$stmt->fetchAll(PDO::FETCH_ASSOC)
     ]);
+}
+
+// CREATE COMMENT
+function createComment($db, $data){
+
+    if(empty($data['resource_id']) || empty($data['author']) || empty($data['text'])){
+        sendResponse(["success"=>false],400);
+    }
+
+    // check resource exists
+    $stmt = $db->prepare("SELECT id FROM resources WHERE id=?");
+    $stmt->execute([$data['resource_id']]);
+
+    if(!$stmt->fetch()){
+        sendResponse(["success"=>false],404);
+    }
+
+    $stmt = $db->prepare("INSERT INTO comments_resource(resource_id,author,text) VALUES(?,?,?)");
+    $stmt->execute([
+        $data['resource_id'],
+        $data['author'],
+        $data['text']
+    ]);
+
+    sendResponse(["success"=>true],201);
+}
+
+// DELETE COMMENT
+function deleteComment($db, $id){
+
+    if(!is_numeric($id)){
+        sendResponse(["success"=>false],400);
+    }
+
+    $stmt = $db->prepare("SELECT id FROM comments_resource WHERE id=?");
+    $stmt->execute([$id]);
+
+    if(!$stmt->fetch()){
+        sendResponse(["success"=>false],404);
+    }
+
+    $stmt = $db->prepare("DELETE FROM comments_resource WHERE id=?");
+    $stmt->execute([$id]);
 
     sendResponse(["success"=>true]);
 }
 
 // ================= ROUTER =================
 
-try {
+try{
 
-if($method==="GET"){
-
-    if($id){
-        getUserById($db,$id);
-    } else {
-        getAllUsers($db,$search);
+    // ROUTES BASED ON QUERY PARAMS
+    if(isset($_GET['comments'])){
+        if($method === "GET"){
+            getComments($db, $_GET['comments']);
+        }
+        elseif($method === "POST"){
+            createComment($db, $data);
+        }
+        else{
+            sendResponse(["success"=>false],405);
+        }
     }
-}
 
-elseif($method==="POST"){
-
-    if($action==="change_password"){
-        changePassword($db,$data);
-    } else {
-        createUser($db,$data);
+    elseif(isset($_GET['comment_id'])){
+        if($method === "DELETE"){
+            deleteComment($db, $_GET['comment_id']);
+        } else {
+            sendResponse(["success"=>false],405);
+        }
     }
-}
 
-elseif($method==="PUT"){
-    updateUser($db,$data);
-}
+    else{
+        if($method === "GET"){
+            if(isset($_GET['id'])){
+                getResourceById($db, $_GET['id']);
+            } else {
+                getAllResources($db);
+            }
+        }
 
-elseif($method==="DELETE"){
-    if($id){
-        deleteUser($db,$id);
-    } else {
-        sendResponse(["success"=>false],400);
+        elseif($method === "POST"){
+            createResource($db, $data);
+        }
+
+        elseif($method === "DELETE"){
+            if(isset($_GET['id'])){
+                deleteResource($db, $_GET['id']);
+            } else {
+                sendResponse(["success"=>false],400);
+            }
+        }
+
+        else{
+            sendResponse(["success"=>false],405);
+        }
     }
-}
-
-else{
-    sendResponse(["success"=>false],405);
-}
 
 }catch(Exception $e){
     sendResponse(["success"=>false],500);
