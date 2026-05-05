@@ -13,7 +13,7 @@ require_once 'db_connection.php';
 $db = getDBConnection();
 
 $method = $_SERVER['REQUEST_METHOD'];
-$data = json_decode(file_get_contents('php://input'), true);
+$data = !empty($_POST) ? $_POST : json_decode(file_get_contents('php://input'), true);
 $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 $action = $_GET['action'] ?? null;
 
