@@ -363,7 +363,7 @@ try {
             $comment_id =
                 $_GET['comment_id']
                 ?? $_GET['commentId']
-                ?? $id;
+                ?? $_GET['comment'];
 
             deleteComment($db, $comment_id);
         }
