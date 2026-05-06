@@ -167,7 +167,8 @@ function deleteResource($db, $id){
     }
 
     $stmt = $db->prepare("
-        SELECT id FROM resources
+        SELECT id
+        FROM resources
         WHERE id = ?
     ");
 
@@ -237,7 +238,8 @@ function createComment($db, $data){
     }
 
     $stmt = $db->prepare("
-        SELECT id FROM resources
+        SELECT id
+        FROM resources
         WHERE id = ?
     ");
 
@@ -282,9 +284,7 @@ function deleteComment($db, $id){
     $stmt->execute([$id]);
 
     if(!$stmt->fetch()){
-        sendResponse([
-            "success" => false
-        ], 404);
+        throw new Exception("Comment not found");
     }
 
     $stmt = $db->prepare("
@@ -313,7 +313,6 @@ try {
             ?? $_GET['q']
             ?? null;
 
-        // COMMENTS
         if(
             isset($_GET['comments']) ||
             isset($_GET['resource_id']) ||
@@ -328,13 +327,11 @@ try {
             getComments($db, $resource_id);
         }
 
-        // SINGLE RESOURCE
         elseif($id){
 
             getResource($db, $id);
         }
 
-        // ALL RESOURCES
         else {
 
             getAllResources($db, $search);
@@ -368,7 +365,7 @@ try {
 
         $id = $_GET['id'] ?? null;
 
-        // COMMENT DELETE
+        // DELETE COMMENT EXPLICITLY
         if(
             isset($_GET['comment']) ||
             isset($_GET['comment_id']) ||
@@ -385,26 +382,26 @@ try {
                 ?? $_GET['comments']
                 ?? $id;
 
-            deleteComment($db, $comment_id);
+            try {
+
+                deleteComment($db, $comment_id);
+
+            } catch(Exception $e){
+
+                sendResponse([
+                    "success" => false
+                ], 404);
+            }
         }
 
-        // IMPORTANT FIX
-        // if id exists check comments table first
+        // DELETE BY ID
         elseif($id){
 
-            $stmt = $db->prepare("
-                SELECT id
-                FROM comments_resource
-                WHERE id = ?
-            ");
-
-            $stmt->execute([$id]);
-
-            if($stmt->fetch()){
+            try {
 
                 deleteComment($db, $id);
 
-            } else {
+            } catch(Exception $e){
 
                 deleteResource($db, $id);
             }
