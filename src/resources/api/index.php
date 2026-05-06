@@ -10,6 +10,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);
 
 // ========= HELPER =========
+
 function sendResponse($data, $code = 200){
     http_response_code($code);
     echo json_encode($data);
@@ -36,7 +37,10 @@ function getAllResources($db, $search = null){
 
     } else {
 
-        $stmt = $db->prepare("SELECT * FROM resources");
+        $stmt = $db->prepare("
+            SELECT * FROM resources
+        ");
+
         $stmt->execute();
     }
 
@@ -46,7 +50,7 @@ function getAllResources($db, $search = null){
     ]);
 }
 
-// GET BY ID
+// GET RESOURCE BY ID
 function getResource($db, $id){
 
     if(!is_numeric($id)){
@@ -72,7 +76,7 @@ function getResource($db, $id){
     ]);
 }
 
-// CREATE
+// CREATE RESOURCE
 function createResource($db, $data){
 
     if(empty($data['title'])){
@@ -104,7 +108,7 @@ function createResource($db, $data){
     ], 201);
 }
 
-// UPDATE
+// UPDATE RESOURCE
 function updateResource($db, $data){
 
     if(empty($data['id'])){
@@ -150,7 +154,7 @@ function updateResource($db, $data){
     ]);
 }
 
-// DELETE
+// DELETE RESOURCE
 function deleteResource($db, $id){
 
     if(!is_numeric($id)){
@@ -190,11 +194,7 @@ function getComments($db, $resource_id){
     }
 
     $stmt = $db->prepare("
-        SELECT
-            id,
-            resource_id,
-            author,
-            text
+        SELECT *
         FROM comments_resource
         WHERE resource_id = ?
         ORDER BY id ASC
@@ -211,15 +211,19 @@ function getComments($db, $resource_id){
 // CREATE COMMENT
 function createComment($db, $data){
 
-    $resourceId = $data['resource_id']
+    $resourceId =
+        $data['resource_id']
         ?? $data['resourceId']
         ?? null;
 
+    $author = $data['author'] ?? null;
     $text = $data['text'] ?? null;
 
-    $author = $data['author'] ?? null;
-
-    if(empty($resourceId) || empty($text) || empty($author)){
+    if(
+        empty($resourceId) ||
+        empty($author) ||
+        empty($text)
+    ){
         sendResponse(["success" => false], 400);
     }
 
@@ -288,18 +292,35 @@ try {
     if($method === "GET"){
 
         $id = $_GET['id'] ?? null;
-        $search = $_GET['search'] ?? $_GET['q'] ?? null;
 
-        if(isset($_GET['comments'])){
+        $search =
+            $_GET['search']
+            ?? $_GET['q']
+            ?? null;
 
-            $resource_id = $_GET['comments'];
+        // COMMENTS
+        if(
+            isset($_GET['comments']) ||
+            isset($_GET['resource_id']) ||
+            isset($_GET['resourceId'])
+        ){
+
+            $resource_id =
+                $_GET['comments']
+                ?? $_GET['resource_id']
+                ?? $_GET['resourceId'];
+
             getComments($db, $resource_id);
+        }
 
-        } elseif($id){
+        // SINGLE RESOURCE
+        elseif($id){
 
             getResource($db, $id);
+        }
 
-        } else {
+        // ALL RESOURCES
+        else {
 
             getAllResources($db, $search);
         }
@@ -332,28 +353,33 @@ try {
 
         $id = $_GET['id'] ?? null;
 
-        $comment_id = $_GET['comment_id']
-            ?? $_GET['commentId']
-            ?? null;
-
+        // DELETE COMMENT
         if(
             isset($_GET['comment']) ||
-            $comment_id
+            isset($_GET['comment_id']) ||
+            isset($_GET['commentId'])
         ){
 
-            $deleteId = $comment_id ?? $id;
+            $comment_id =
+                $_GET['comment_id']
+                ?? $_GET['commentId']
+                ?? $_GET['comment']
+                ?? $id;
 
-            deleteComment($db, $deleteId);
-
+            deleteComment($db, $comment_id);
         }
+
+        // DELETE RESOURCE
         elseif($id){
 
             deleteResource($db, $id);
-
         }
+
         else{
 
-            sendResponse(["success" => false], 400);
+            sendResponse([
+                "success" => false
+            ], 400);
         }
     }
 
