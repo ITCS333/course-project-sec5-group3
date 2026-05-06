@@ -300,7 +300,10 @@ try {
     // ===== POST =====
     elseif($method === "POST"){
 
-        if(isset($_GET['comment']) || isset($_GET['comments'])){
+        if(
+            isset($data['resource_id']) ||
+            isset($data['resourceId'])
+        ){
 
             createComment($db, $data);
 
@@ -329,7 +332,13 @@ try {
 
             deleteComment($db, $comment_id);
 
-        } elseif($id){
+        }
+        elseif(isset($_GET['comment'])){
+
+            deleteComment($db, $_GET['comment']);
+
+        }
+        elseif($id){
 
             deleteResource($db, $id);
 
