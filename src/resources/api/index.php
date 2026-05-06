@@ -284,7 +284,9 @@ function deleteComment($db, $id){
     $stmt->execute([$id]);
 
     if(!$stmt->fetch()){
-        throw new Exception("Comment not found");
+        sendResponse([
+            "success" => false
+        ], 404);
     }
 
     $stmt = $db->prepare("
@@ -365,7 +367,7 @@ try {
 
         $id = $_GET['id'] ?? null;
 
-        // DELETE COMMENT EXPLICITLY
+        // DELETE COMMENT
         if(
             isset($_GET['comment']) ||
             isset($_GET['comment_id']) ||
@@ -382,26 +384,25 @@ try {
                 ?? $_GET['comments']
                 ?? $id;
 
-            try {
-
-                deleteComment($db, $comment_id);
-
-            } catch(Exception $e){
-
-                sendResponse([
-                    "success" => false
-                ], 404);
-            }
+            deleteComment($db, $comment_id);
         }
 
         // DELETE BY ID
         elseif($id){
 
-            try {
+            $stmt = $db->prepare("
+                SELECT id
+                FROM comments_resource
+                WHERE id = ?
+            ");
+
+            $stmt->execute([$id]);
+
+            if($stmt->fetch()){
 
                 deleteComment($db, $id);
 
-            } catch(Exception $e){
+            } else {
 
                 deleteResource($db, $id);
             }
