@@ -18,16 +18,28 @@ function sendResponse($data, $code = 200){
 // ========= RESOURCES =========
 
 function getAllResources($db, $search = null){
+
     if($search){
+
         $stmt = $db->prepare("
             SELECT * FROM resources
             WHERE title LIKE ?
             OR description LIKE ?
         ");
-        $stmt->execute(["%$search%", "%$search%"]);
+
+        $stmt->execute([
+            "%$search%",
+            "%$search%"
+        ]);
+
     } else {
-        $stmt = $db->prepare("SELECT * FROM resources");
+
+        $stmt = $db->prepare("
+            SELECT * FROM resources
+        ");
+
         $stmt->execute();
+
     }
 
     sendResponse([
@@ -37,12 +49,18 @@ function getAllResources($db, $search = null){
 }
 
 function getResource($db, $id){
+
     if(!is_numeric($id)){
         sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("SELECT * FROM resources WHERE id = ?");
+    $stmt = $db->prepare("
+        SELECT * FROM resources
+        WHERE id = ?
+    ");
+
     $stmt->execute([$id]);
+
     $resource = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if(!$resource){
@@ -56,6 +74,7 @@ function getResource($db, $id){
 }
 
 function createResource($db, $data){
+
     if(empty($data['title']) || empty($data['link'])){
         sendResponse(["success" => false], 400);
     }
@@ -82,11 +101,16 @@ function createResource($db, $data){
 }
 
 function updateResource($db, $data){
+
     if(empty($data['id'])){
         sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("SELECT * FROM resources WHERE id = ?");
+    $stmt = $db->prepare("
+        SELECT * FROM resources
+        WHERE id = ?
+    ");
+
     $stmt->execute([$data['id']]);
 
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -116,15 +140,22 @@ function updateResource($db, $data){
         $data['id']
     ]);
 
-    sendResponse(["success" => true]);
+    sendResponse([
+        "success" => true
+    ]);
 }
 
 function deleteResource($db, $id){
+
     if(!is_numeric($id)){
         sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("SELECT id FROM resources WHERE id = ?");
+    $stmt = $db->prepare("
+        SELECT id FROM resources
+        WHERE id = ?
+    ");
+
     $stmt->execute([$id]);
 
     if(!$stmt->fetch()){
@@ -136,6 +167,7 @@ function deleteResource($db, $id){
         DELETE FROM comments_resource
         WHERE resource_id = ?
     ");
+
     $stmt->execute([$id]);
 
     // حذف المورد
@@ -143,14 +175,18 @@ function deleteResource($db, $id){
         DELETE FROM resources
         WHERE id = ?
     ");
+
     $stmt->execute([$id]);
 
-    sendResponse(["success" => true]);
+    sendResponse([
+        "success" => true
+    ]);
 }
 
 // ========= COMMENTS =========
 
 function getComments($db, $resource_id){
+
     if(!is_numeric($resource_id)){
         sendResponse(["success" => false], 400);
     }
@@ -170,6 +206,7 @@ function getComments($db, $resource_id){
 }
 
 function createComment($db, $data){
+
     $resourceId = $data['resource_id'] ?? $data['resourceId'] ?? null;
     $author = $data['author'] ?? null;
     $text = $data['text'] ?? null;
@@ -178,7 +215,11 @@ function createComment($db, $data){
         sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("SELECT id FROM resources WHERE id = ?");
+    $stmt = $db->prepare("
+        SELECT id FROM resources
+        WHERE id = ?
+    ");
+
     $stmt->execute([$resourceId]);
 
     if(!$stmt->fetch()){
@@ -196,10 +237,13 @@ function createComment($db, $data){
         $text
     ]);
 
-    sendResponse(["success" => true], 201);
+    sendResponse([
+        "success" => true
+    ], 201);
 }
 
 function deleteComment($db, $id){
+
     if(!is_numeric($id)){
         sendResponse(["success" => false], 400);
     }
@@ -222,7 +266,9 @@ function deleteComment($db, $id){
 
     $stmt->execute([$id]);
 
-    sendResponse(["success" => true]);
+    sendResponse([
+        "success" => true
+    ]);
 }
 
 // ========= ROUTER =========
@@ -297,14 +343,33 @@ try {
             $_GET['comments'] ??
             null;
 
+        // حذف comment مباشر
         if($comment_id !== null){
 
             deleteComment($db, $comment_id);
 
         }
+        // إذا جاء فقط id
         elseif($id !== null){
 
-            deleteResource($db, $id);
+            // هل هو comment؟
+            $stmt = $db->prepare("
+                SELECT id FROM comments_resource
+                WHERE id = ?
+            ");
+
+            $stmt->execute([$id]);
+
+            if($stmt->fetch()){
+
+                deleteComment($db, $id);
+
+            }
+            else{
+
+                deleteResource($db, $id);
+
+            }
 
         }
         else{
