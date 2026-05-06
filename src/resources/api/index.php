@@ -2,9 +2,9 @@
 
 header("Content-Type: application/json");
 
-require_once __DIR__ . '/config/Database.php';
+require_once __DIR__ . '/../../common/db.php';
 
-$db = (new Database())->getConnection();
+$db = getDBConnection();
 
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);
