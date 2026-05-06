@@ -112,17 +112,23 @@ function updateResource($db, $data){
     }
 
     $stmt = $db->prepare("
-        SELECT id FROM resources
+        SELECT * FROM resources
         WHERE id = ?
     ");
 
     $stmt->execute([$data['id']]);
 
-    if(!$stmt->fetch()){
+    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if(!$existing){
         sendResponse(["success" => false], 404);
     }
 
-    if(isset($data['link']) && !filter_var($data['link'], FILTER_VALIDATE_URL)){
+    $title = $data['title'] ?? $existing['title'];
+    $description = $data['description'] ?? $existing['description'];
+    $link = $data['link'] ?? $existing['link'];
+
+    if(!filter_var($link, FILTER_VALIDATE_URL)){
         sendResponse(["success" => false], 400);
     }
 
@@ -133,9 +139,9 @@ function updateResource($db, $data){
     ");
 
     $stmt->execute([
-        $data['title'],
-        $data['description'],
-        $data['link'],
+        $title,
+        $description,
+        $link,
         $data['id']
     ]);
 
@@ -199,7 +205,13 @@ function getComments($db, $resource_id){
 // CREATE COMMENT
 function createComment($db, $data){
 
-    if(empty($data['resource_id']) || empty($data['text'])){
+    $resourceId = $data['resource_id']
+        ?? $data['resourceId']
+        ?? null;
+
+    $text = $data['text'] ?? null;
+
+    if(empty($resourceId) || empty($text)){
         sendResponse(["success" => false], 400);
     }
 
@@ -208,7 +220,7 @@ function createComment($db, $data){
         WHERE id = ?
     ");
 
-    $stmt->execute([$data['resource_id']]);
+    $stmt->execute([$resourceId]);
 
     if(!$stmt->fetch()){
         sendResponse(["success" => false], 404);
@@ -220,9 +232,9 @@ function createComment($db, $data){
     ");
 
     $stmt->execute([
-        $data['resource_id'],
+        $resourceId,
         $data['author'] ?? "anonymous",
-        $data['text']
+        $text
     ]);
 
     sendResponse([
@@ -308,7 +320,10 @@ try {
     elseif($method === "DELETE"){
 
         $id = $_GET['id'] ?? null;
-        $comment_id = $_GET['comment_id'] ?? null;
+
+        $comment_id = $_GET['comment_id']
+            ?? $_GET['commentId']
+            ?? null;
 
         if($comment_id){
 
