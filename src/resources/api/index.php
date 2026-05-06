@@ -197,6 +197,7 @@ function getComments($db, $resource_id){
             text
         FROM comments_resource
         WHERE resource_id = ?
+        ORDER BY id ASC
     ");
 
     $stmt->execute([$resource_id]);
@@ -216,7 +217,9 @@ function createComment($db, $data){
 
     $text = $data['text'] ?? null;
 
-    if(empty($resourceId) || empty($text)){
+    $author = $data['author'] ?? null;
+
+    if(empty($resourceId) || empty($text) || empty($author)){
         sendResponse(["success" => false], 400);
     }
 
@@ -238,7 +241,7 @@ function createComment($db, $data){
 
     $stmt->execute([
         $resourceId,
-        $data['author'] ?? "anonymous",
+        $author,
         $text
     ]);
 
@@ -251,7 +254,7 @@ function createComment($db, $data){
 function deleteComment($db, $id){
 
     if(!is_numeric($id)){
-        sendResponse(["success" => false], 400);
+        sendResponse(["success" => false], 404);
     }
 
     $stmt = $db->prepare("
@@ -333,7 +336,10 @@ try {
             ?? $_GET['commentId']
             ?? null;
 
-        if(isset($_GET['comment'])){
+        if(
+            isset($_GET['comment']) ||
+            $comment_id
+        ){
 
             $deleteId = $comment_id ?? $id;
 
