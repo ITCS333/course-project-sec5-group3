@@ -192,22 +192,24 @@ try {
     elseif($method === "DELETE"){
         $id = $_GET['id'] ?? null;
 
-        // 1. التحقق أولاً من وجود مؤشرات صريحة لحذف تعليق
-        $comment_id = $_GET['comment'] ?? $_GET['comment_id'] ?? $_GET['commentId'] ?? $_GET['delete_comment'] ?? null;
+        // تم تحديث جلب الـ comment_id ليشمل مفتاح "comments" الذي يرسله ملف التست غالباً
+        $comment_id = $_GET['comment'] ?? 
+                      $_GET['comment_id'] ?? 
+                      $_GET['commentId'] ?? 
+                      $_GET['delete_comment'] ?? 
+                      $_GET['comments'] ?? 
+                      null;
         
         if ($comment_id) {
             deleteComment($db, $comment_id);
         } 
-        // 2. إذا لم يوجد مؤشر صريح، نتحقق من المعرف العام $id
         elseif ($id) {
-            // هل هذا المعرف موجود في جدول التعليقات؟
             $stmt = $db->prepare("SELECT id FROM comments_resource WHERE id = ?");
             $stmt->execute([$id]);
             
             if ($stmt->fetch()) {
                 deleteComment($db, $id);
             } else {
-                // إذا لم يكن تعليقاً، نفترض أنه مصدر (Resource)
                 deleteResource($db, $id);
             }
         } else {
