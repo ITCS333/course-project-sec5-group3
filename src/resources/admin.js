@@ -54,10 +54,40 @@ function createResourceRow(resource) {
 
 function renderTable(arr) {
   const list = arr !== undefined ? arr : resources;
+
   resourcesTbody.innerHTML = "";
+
   list.forEach(function(resource) {
     resourcesTbody.appendChild(createResourceRow(resource));
   });
+}
+
+// ================= CHANGE PASSWORD =================
+function handleChangePassword(event) {
+  event.preventDefault();
+
+  const currentPassword = document.getElementById("current-password");
+  const newPassword = document.getElementById("new-password");
+  const confirmPassword = document.getElementById("confirm-password");
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return;
+  }
+
+  if (newPassword.value !== confirmPassword.value) {
+    alert("Passwords do not match");
+    return;
+  }
+
+  if (newPassword.value.length < 8) {
+    alert("Password must be at least 8 characters");
+    return;
+  }
+
+  // ✅ Clear fields after successful validation
+  currentPassword.value = "";
+  newPassword.value = "";
+  confirmPassword.value = "";
 }
 
 // ================= ADD / UPDATE =================
@@ -68,39 +98,64 @@ function handleAddResource(event) {
 
   // 🔥 Users Mode
   if (isUsersMode()) {
+
     const name = document.getElementById("resource-title").value.trim();
     const email = document.getElementById("resource-description").value.trim();
     const password = document.getElementById("resource-link").value.trim();
 
     if (editingId !== null) {
+
       fetch("./api/admin/index.php", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editingId, name })
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          id: editingId,
+          name
+        })
       })
       .then(r => r.json())
       .then(result => {
+
         if (result.success) {
+
           resources = resources.map(r =>
-            r.id === editingId ? { ...r, name } : r
+            r.id === editingId
+              ? { ...r, name }
+              : r
           );
+
           renderTable();
+
           resourceForm.reset();
+
           editingId = null;
+
           addBtn.textContent = "Add Resource";
         }
       });
 
     } else {
+
       fetch("./api/admin/index.php", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password })
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password
+        })
       })
       .then(r => r.json())
       .then(result => {
+
         if (result.success) {
-          loadAndInitialize(); // 🔥 reload من السيرفر
+
+          loadAndInitialize();
+
           resourceForm.reset();
         }
       });
@@ -111,39 +166,78 @@ function handleAddResource(event) {
 
   // ================= Resources Mode =================
   const title = document.getElementById("resource-title").value.trim();
+
   const description = document.getElementById("resource-description").value.trim();
+
   const link = document.getElementById("resource-link").value.trim();
 
   if (editingId !== null) {
+
     fetch("./api/index.php", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: editingId, title, description, link })
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        id: editingId,
+        title,
+        description,
+        link
+      })
     })
     .then(r => r.json())
     .then(result => {
+
       if (result.success) {
+
         resources = resources.map(r =>
-          r.id === editingId ? { id: editingId, title, description, link } : r
+          r.id === editingId
+            ? {
+                id: editingId,
+                title,
+                description,
+                link
+              }
+            : r
         );
+
         renderTable();
+
         resourceForm.reset();
+
         editingId = null;
+
         addBtn.textContent = "Add Resource";
       }
     });
 
   } else {
+
     fetch("./api/index.php", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, link })
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title,
+        description,
+        link
+      })
     })
     .then(r => r.json())
     .then(result => {
+
       if (result.success) {
-        resources.push({ id: result.id, title, description, link });
+
+        resources.push({
+          id: result.id,
+          title,
+          description,
+          link
+        });
+
         renderTable();
+
         resourceForm.reset();
       }
     });
@@ -152,7 +246,9 @@ function handleAddResource(event) {
 
 // ================= TABLE CLICK =================
 function handleTableClick(event) {
+
   const target = event.target;
+
   const id = parseInt(target.dataset.id);
 
   if (target.classList.contains("delete-btn")) {
@@ -161,31 +257,48 @@ function handleTableClick(event) {
       ? "./api/admin/index.php?id=" + id
       : "./api/index.php?id=" + id;
 
-    fetch(url, { method: "DELETE" })
-      .then(r => r.json())
-      .then(result => {
-        if (result.success) {
-          resources = resources.filter(r => r.id !== id);
-          renderTable();
-        }
-      });
+    fetch(url, {
+      method: "DELETE"
+    })
+    .then(r => r.json())
+    .then(result => {
+
+      if (result.success) {
+
+        resources = resources.filter(r => r.id !== id);
+
+        renderTable();
+      }
+    });
   }
 
   if (target.classList.contains("edit-btn")) {
+
     const resource = resources.find(r => r.id === id);
-    if (!resource) return;
+
+    if (!resource) {
+      return;
+    }
 
     if (isUsersMode()) {
+
       document.getElementById("resource-title").value = resource.name;
+
       document.getElementById("resource-description").value = resource.email;
+
       document.getElementById("resource-link").value = "";
+
     } else {
+
       document.getElementById("resource-title").value = resource.title;
+
       document.getElementById("resource-description").value = resource.description;
+
       document.getElementById("resource-link").value = resource.link;
     }
 
     editingId = id;
+
     document.getElementById("add-resource").textContent = "Update Resource";
   }
 }
@@ -198,13 +311,22 @@ async function loadAndInitialize() {
     : "./api/index.php";
 
   const response = await fetch(url);
+
   const result = await response.json();
 
   resources = result.data || [];
+
   renderTable();
 
   resourceForm.addEventListener("submit", handleAddResource);
+
   resourcesTbody.addEventListener("click", handleTableClick);
+
+  const passwordForm = document.getElementById("password-form");
+
+  if (passwordForm) {
+    passwordForm.addEventListener("submit", handleChangePassword);
+  }
 }
 
 loadAndInitialize();
