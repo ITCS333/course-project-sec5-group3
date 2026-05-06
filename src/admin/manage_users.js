@@ -1,19 +1,13 @@
-/* * Requirement: Add interactivity and data management to the Admin Portal.
- * All data is fetched from and written to the PHP API at '../api/index.php'.
- */
 
-// --- Global Data Store ---
 let users = [];
 let initialized = false;
 
-// --- Element Selections ---
 const userTableBody = document.getElementById("user-table-body");
 const addUserForm = document.getElementById("add-user-form");
 const changePasswordForm = document.getElementById("password-form");
 const searchInput = document.getElementById("search-input");
 const tableHeaders = document.querySelectorAll("#user-table thead th");
 
-// --- UI Rendering Functions ---
 
 function createUserRow(user) {
     const tr = document.createElement("tr");
@@ -45,8 +39,6 @@ function renderTable(userArray) {
         userTableBody.appendChild(createUserRow(user));
     });
 }
-
-// --- Event Handlers ---
 
 async function handleChangePassword(event) {
     event.preventDefault();
@@ -170,8 +162,6 @@ function handleSort(event) {
     renderTable(users);
 }
 
-// --- Initialization ---
-
 async function loadUsersAndInitialize() {
     try {
         const response = await fetch("../api/index.php");
@@ -193,3 +183,19 @@ async function loadUsersAndInitialize() {
 }
 
 loadUsersAndInitialize();
+
+
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = {
+        createUserRow,
+        renderTable,
+        handleChangePassword,
+        handleAddUser,
+        handleTableClick,
+        handleSearch,
+        handleSort,
+        loadUsersAndInitialize,
+        get users() { return users; },
+        __seedUsers(arr) { users = arr; }
+    };
+}
