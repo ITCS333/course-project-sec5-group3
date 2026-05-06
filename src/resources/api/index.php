@@ -258,18 +258,9 @@ function createComment($db, $data){
 function deleteComment($db, $id){
 
     if(!is_numeric($id)){
-        sendResponse(["success" => false], 404);
-    }
-
-    $stmt = $db->prepare("
-        SELECT id FROM comments_resource
-        WHERE id = ?
-    ");
-
-    $stmt->execute([$id]);
-
-    if(!$stmt->fetch()){
-        sendResponse(["success" => false], 404);
+        sendResponse([
+            "success" => false
+        ], 400);
     }
 
     $stmt = $db->prepare("
@@ -280,7 +271,8 @@ function deleteComment($db, $id){
     $stmt->execute([$id]);
 
     sendResponse([
-        "success" => true
+        "success" => true,
+        "message" => "Comment deleted successfully"
     ]);
 }
 
@@ -361,7 +353,8 @@ try {
         ){
 
             $comment_id =
-                $_GET['comment_id']
+                $_GET['comment']
+                ?? $_GET['comment_id']
                 ?? $_GET['commentId']
                 ?? $_GET['id'];
 
