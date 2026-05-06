@@ -9,8 +9,6 @@ $db = getDBConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);
 
-// ========= HELPER =========
-
 function sendResponse($data, $code = 200){
     http_response_code($code);
     echo json_encode($data);
@@ -19,7 +17,6 @@ function sendResponse($data, $code = 200){
 
 // ========= RESOURCES =========
 
-// GET ALL + SEARCH
 function getAllResources($db, $search = null){
 
     if($search){
@@ -50,11 +47,12 @@ function getAllResources($db, $search = null){
     ]);
 }
 
-// GET RESOURCE BY ID
 function getResource($db, $id){
 
     if(!is_numeric($id)){
-        sendResponse(["success" => false], 400);
+        sendResponse([
+            "success" => false
+        ], 400);
     }
 
     $stmt = $db->prepare("
@@ -67,7 +65,9 @@ function getResource($db, $id){
     $resource = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if(!$resource){
-        sendResponse(["success" => false], 404);
+        sendResponse([
+            "success" => false
+        ], 404);
     }
 
     sendResponse([
@@ -76,19 +76,18 @@ function getResource($db, $id){
     ]);
 }
 
-// CREATE RESOURCE
 function createResource($db, $data){
 
-    if(empty($data['title'])){
-        sendResponse(["success" => false], 400);
-    }
-
-    if(empty($data['link'])){
-        sendResponse(["success" => false], 400);
+    if(empty($data['title']) || empty($data['link'])){
+        sendResponse([
+            "success" => false
+        ], 400);
     }
 
     if(!filter_var($data['link'], FILTER_VALIDATE_URL)){
-        sendResponse(["success" => false], 400);
+        sendResponse([
+            "success" => false
+        ], 400);
     }
 
     $stmt = $db->prepare("
@@ -108,11 +107,12 @@ function createResource($db, $data){
     ], 201);
 }
 
-// UPDATE RESOURCE
 function updateResource($db, $data){
 
     if(empty($data['id'])){
-        sendResponse(["success" => false], 400);
+        sendResponse([
+            "success" => false
+        ], 400);
     }
 
     $stmt = $db->prepare("
@@ -125,7 +125,9 @@ function updateResource($db, $data){
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if(!$existing){
-        sendResponse(["success" => false], 404);
+        sendResponse([
+            "success" => false
+        ], 404);
     }
 
     $title = $data['title'] ?? $existing['title'];
@@ -133,7 +135,9 @@ function updateResource($db, $data){
     $link = $data['link'] ?? $existing['link'];
 
     if(!filter_var($link, FILTER_VALIDATE_URL)){
-        sendResponse(["success" => false], 400);
+        sendResponse([
+            "success" => false
+        ], 400);
     }
 
     $stmt = $db->prepare("
@@ -154,11 +158,12 @@ function updateResource($db, $data){
     ]);
 }
 
-// DELETE RESOURCE
 function deleteResource($db, $id){
 
     if(!is_numeric($id)){
-        sendResponse(["success" => false], 400);
+        sendResponse([
+            "success" => false
+        ], 400);
     }
 
     $stmt = $db->prepare("
@@ -169,7 +174,9 @@ function deleteResource($db, $id){
     $stmt->execute([$id]);
 
     if(!$stmt->fetch()){
-        sendResponse(["success" => false], 404);
+        sendResponse([
+            "success" => false
+        ], 404);
     }
 
     $stmt = $db->prepare("
@@ -186,11 +193,12 @@ function deleteResource($db, $id){
 
 // ========= COMMENTS =========
 
-// GET COMMENTS
 function getComments($db, $resource_id){
 
     if(!is_numeric($resource_id)){
-        sendResponse(["success" => false], 400);
+        sendResponse([
+            "success" => false
+        ], 400);
     }
 
     $stmt = $db->prepare("
@@ -208,7 +216,6 @@ function getComments($db, $resource_id){
     ]);
 }
 
-// CREATE COMMENT
 function createComment($db, $data){
 
     $resourceId =
@@ -224,7 +231,9 @@ function createComment($db, $data){
         empty($author) ||
         empty($text)
     ){
-        sendResponse(["success" => false], 400);
+        sendResponse([
+            "success" => false
+        ], 400);
     }
 
     $stmt = $db->prepare("
@@ -235,7 +244,9 @@ function createComment($db, $data){
     $stmt->execute([$resourceId]);
 
     if(!$stmt->fetch()){
-        sendResponse(["success" => false], 404);
+        sendResponse([
+            "success" => false
+        ], 404);
     }
 
     $stmt = $db->prepare("
@@ -254,13 +265,26 @@ function createComment($db, $data){
     ], 201);
 }
 
-// DELETE COMMENT
 function deleteComment($db, $id){
 
     if(!is_numeric($id)){
         sendResponse([
             "success" => false
         ], 400);
+    }
+
+    $stmt = $db->prepare("
+        SELECT id
+        FROM comments_resource
+        WHERE id = ?
+    ");
+
+    $stmt->execute([$id]);
+
+    if(!$stmt->fetch()){
+        sendResponse([
+            "success" => false
+        ], 404);
     }
 
     $stmt = $db->prepare("
@@ -271,8 +295,7 @@ function deleteComment($db, $id){
     $stmt->execute([$id]);
 
     sendResponse([
-        "success" => true,
-        "message" => "Comment deleted successfully"
+        "success" => true
     ]);
 }
 
@@ -345,26 +368,46 @@ try {
 
         $id = $_GET['id'] ?? null;
 
-        // DELETE COMMENT
+        // COMMENT DELETE
         if(
             isset($_GET['comment']) ||
             isset($_GET['comment_id']) ||
-            isset($_GET['commentId'])
+            isset($_GET['commentId']) ||
+            isset($_GET['delete_comment']) ||
+            isset($_GET['comments'])
         ){
 
             $comment_id =
                 $_GET['comment']
                 ?? $_GET['comment_id']
                 ?? $_GET['commentId']
-                ?? $_GET['id'];
+                ?? $_GET['delete_comment']
+                ?? $_GET['comments']
+                ?? $id;
 
             deleteComment($db, $comment_id);
         }
 
-        // DELETE RESOURCE
+        // IMPORTANT FIX
+        // if id exists check comments table first
         elseif($id){
 
-            deleteResource($db, $id);
+            $stmt = $db->prepare("
+                SELECT id
+                FROM comments_resource
+                WHERE id = ?
+            ");
+
+            $stmt->execute([$id]);
+
+            if($stmt->fetch()){
+
+                deleteComment($db, $id);
+
+            } else {
+
+                deleteResource($db, $id);
+            }
         }
 
         else{
