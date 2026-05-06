@@ -190,7 +190,12 @@ function getComments($db, $resource_id){
     }
 
     $stmt = $db->prepare("
-        SELECT * FROM comments_resource
+        SELECT
+            id,
+            resource_id,
+            author,
+            text
+        FROM comments_resource
         WHERE resource_id = ?
     ");
 
@@ -328,21 +333,19 @@ try {
             ?? $_GET['commentId']
             ?? null;
 
-        if($comment_id){
+        if(isset($_GET['comment'])){
 
-            deleteComment($db, $comment_id);
+            $deleteId = $comment_id ?? $id;
 
-        }
-        elseif(isset($_GET['comment'])){
-
-            deleteComment($db, $_GET['comment']);
+            deleteComment($db, $deleteId);
 
         }
         elseif($id){
 
             deleteResource($db, $id);
 
-        } else {
+        }
+        else{
 
             sendResponse(["success" => false], 400);
         }
