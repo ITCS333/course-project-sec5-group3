@@ -24,14 +24,9 @@ function getAllResources($db, $search = null){
             WHERE title LIKE ?
             OR description LIKE ?
         ");
-        $stmt->execute([
-            "%$search%",
-            "%$search%"
-        ]);
+        $stmt->execute(["%$search%", "%$search%"]);
     } else {
-        $stmt = $db->prepare("
-            SELECT * FROM resources
-        ");
+        $stmt = $db->prepare("SELECT * FROM resources");
         $stmt->execute();
     }
 
@@ -43,78 +38,46 @@ function getAllResources($db, $search = null){
 
 function getResource($db, $id){
     if(!is_numeric($id)){
-        sendResponse([
-            "success" => false
-        ], 400);
+        sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("
-        SELECT * FROM resources
-        WHERE id = ?
-    ");
+    $stmt = $db->prepare("SELECT * FROM resources WHERE id = ?");
     $stmt->execute([$id]);
     $resource = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if(!$resource){
-        sendResponse([
-            "success" => false
-        ], 404);
+        sendResponse(["success" => false], 404);
     }
 
-    sendResponse([
-        "success" => true,
-        "data" => $resource
-    ]);
+    sendResponse(["success" => true, "data" => $resource]);
 }
 
 function createResource($db, $data){
     if(empty($data['title']) || empty($data['link'])){
-        sendResponse([
-            "success" => false
-        ], 400);
+        sendResponse(["success" => false], 400);
     }
 
     if(!filter_var($data['link'], FILTER_VALIDATE_URL)){
-        sendResponse([
-            "success" => false
-        ], 400);
+        sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("
-        INSERT INTO resources(title, description, link)
-        VALUES(?, ?, ?)
-    ");
+    $stmt = $db->prepare("INSERT INTO resources(title, description, link) VALUES(?, ?, ?)");
+    $stmt->execute([$data['title'], $data['description'] ?? "", $data['link']]);
 
-    $stmt->execute([
-        $data['title'],
-        $data['description'] ?? "",
-        $data['link']
-    ]);
-
-    sendResponse([
-        "success" => true,
-        "id" => $db->lastInsertId()
-    ], 201);
+    sendResponse(["success" => true, "id" => $db->lastInsertId()], 201);
 }
 
 function updateResource($db, $data){
     if(empty($data['id'])){
-        sendResponse([
-            "success" => false
-        ], 400);
+        sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("
-        SELECT * FROM resources
-        WHERE id = ?
-    ");
+    $stmt = $db->prepare("SELECT * FROM resources WHERE id = ?");
     $stmt->execute([$data['id']]);
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if(!$existing){
-        sendResponse([
-            "success" => false
-        ], 404);
+        sendResponse(["success" => false], 404);
     }
 
     $title = $data['title'] ?? $existing['title'];
@@ -122,46 +85,28 @@ function updateResource($db, $data){
     $link = $data['link'] ?? $existing['link'];
 
     if(!filter_var($link, FILTER_VALIDATE_URL)){
-        sendResponse([
-            "success" => false
-        ], 400);
+        sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("
-        UPDATE resources
-        SET title = ?, description = ?, link = ?
-        WHERE id = ?
-    ");
+    $stmt = $db->prepare("UPDATE resources SET title = ?, description = ?, link = ? WHERE id = ?");
+    $stmt->execute([$title, $description, $link, $data['id']]);
 
-    $stmt->execute([
-        $title,
-        $description,
-        $link,
-        $data['id']
-    ]);
-
-    sendResponse([
-        "success" => true
-    ]);
+    sendResponse(["success" => true]);
 }
 
 function deleteResource($db, $id){
     if(!is_numeric($id)){
-        sendResponse([
-            "success" => false
-        ], 400);
+        sendResponse(["success" => false], 400);
     }
 
     $stmt = $db->prepare("SELECT id FROM resources WHERE id = ?");
     $stmt->execute([$id]);
-
     if(!$stmt->fetch()){
         sendResponse(["success" => false], 404);
     }
 
     $stmt = $db->prepare("DELETE FROM resources WHERE id = ?");
     $stmt->execute([$id]);
-
     sendResponse(["success" => true]);
 }
 
@@ -169,23 +114,13 @@ function deleteResource($db, $id){
 
 function getComments($db, $resource_id){
     if(!is_numeric($resource_id)){
-        sendResponse([
-            "success" => false
-        ], 400);
+        sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("
-        SELECT *
-        FROM comments_resource
-        WHERE resource_id = ?
-        ORDER BY id ASC
-    ");
+    $stmt = $db->prepare("SELECT * FROM comments_resource WHERE resource_id = ? ORDER BY id ASC");
     $stmt->execute([$resource_id]);
 
-    sendResponse([
-        "success" => true,
-        "data" => $stmt->fetchAll(PDO::FETCH_ASSOC)
-    ]);
+    sendResponse(["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
 function createComment($db, $data){
@@ -199,16 +134,11 @@ function createComment($db, $data){
 
     $stmt = $db->prepare("SELECT id FROM resources WHERE id = ?");
     $stmt->execute([$resourceId]);
-
     if(!$stmt->fetch()){
         sendResponse(["success" => false], 404);
     }
 
-    $stmt = $db->prepare("
-        INSERT INTO comments_resource(resource_id, author, text)
-        VALUES(?, ?, ?)
-    ");
-
+    $stmt = $db->prepare("INSERT INTO comments_resource(resource_id, author, text) VALUES(?, ?, ?)");
     $stmt->execute([$resourceId, $author, $text]);
 
     sendResponse(["success" => true], 201);
@@ -221,21 +151,18 @@ function deleteComment($db, $id){
 
     $stmt = $db->prepare("SELECT id FROM comments_resource WHERE id = ?");
     $stmt->execute([$id]);
-
     if(!$stmt->fetch()){
         sendResponse(["success" => false], 404);
     }
 
     $stmt = $db->prepare("DELETE FROM comments_resource WHERE id = ?");
     $stmt->execute([$id]);
-
     sendResponse(["success" => true]);
 }
 
 // ========= ROUTER =========
 
 try {
-    // ===== GET =====
     if($method === "GET"){
         $id = $_GET['id'] ?? null;
         $search = $_GET['search'] ?? $_GET['q'] ?? null;
@@ -250,7 +177,6 @@ try {
         }
     }
 
-    // ===== POST =====
     elseif($method === "POST"){
         if(isset($data['resource_id']) || isset($data['resourceId'])){
             createComment($db, $data);
@@ -259,33 +185,29 @@ try {
         }
     }
 
-    // ===== PUT =====
     elseif($method === "PUT"){
         updateResource($db, $data);
     }
 
-    // ===== DELETE =====
     elseif($method === "DELETE"){
         $id = $_GET['id'] ?? null;
-        
-        // محاولة استخراج معرف التعليق من عدة مفاتيح محتملة
-        $comment_id = $_GET['comment'] ?? 
-                      $_GET['comment_id'] ?? 
-                      $_GET['commentId'] ?? 
-                      $_GET['delete_comment'] ?? 
-                      (isset($_GET['comments']) && is_numeric($_GET['comments']) ? $_GET['comments'] : null);
 
+        // 1. التحقق أولاً من وجود مؤشرات صريحة لحذف تعليق
+        $comment_id = $_GET['comment'] ?? $_GET['comment_id'] ?? $_GET['commentId'] ?? $_GET['delete_comment'] ?? null;
+        
         if ($comment_id) {
             deleteComment($db, $comment_id);
-        } elseif ($id) {
-            // إذا تم إرسال id فقط، نتحقق أولاً هل هو تعليق؟
+        } 
+        // 2. إذا لم يوجد مؤشر صريح، نتحقق من المعرف العام $id
+        elseif ($id) {
+            // هل هذا المعرف موجود في جدول التعليقات؟
             $stmt = $db->prepare("SELECT id FROM comments_resource WHERE id = ?");
             $stmt->execute([$id]);
             
             if ($stmt->fetch()) {
                 deleteComment($db, $id);
             } else {
-                // إذا لم يكن تعليقاً، نحاول حذفه كمصدر
+                // إذا لم يكن تعليقاً، نفترض أنه مصدر (Resource)
                 deleteResource($db, $id);
             }
         } else {
@@ -293,14 +215,10 @@ try {
         }
     }
 
-    // ===== METHOD NOT ALLOWED =====
     else {
         sendResponse(["success" => false], 405);
     }
 
 } catch(Exception $e){
-    sendResponse([
-        "success" => false,
-        "error" => $e->getMessage()
-    ], 500);
+    sendResponse(["success" => false, "error" => $e->getMessage()], 500);
 }
