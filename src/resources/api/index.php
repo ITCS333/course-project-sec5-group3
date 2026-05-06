@@ -18,26 +18,20 @@ function sendResponse($data, $code = 200){
 // ========= RESOURCES =========
 
 function getAllResources($db, $search = null){
-
     if($search){
-
         $stmt = $db->prepare("
             SELECT * FROM resources
             WHERE title LIKE ?
             OR description LIKE ?
         ");
-
         $stmt->execute([
             "%$search%",
             "%$search%"
         ]);
-
     } else {
-
         $stmt = $db->prepare("
             SELECT * FROM resources
         ");
-
         $stmt->execute();
     }
 
@@ -48,7 +42,6 @@ function getAllResources($db, $search = null){
 }
 
 function getResource($db, $id){
-
     if(!is_numeric($id)){
         sendResponse([
             "success" => false
@@ -59,9 +52,7 @@ function getResource($db, $id){
         SELECT * FROM resources
         WHERE id = ?
     ");
-
     $stmt->execute([$id]);
-
     $resource = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if(!$resource){
@@ -77,7 +68,6 @@ function getResource($db, $id){
 }
 
 function createResource($db, $data){
-
     if(empty($data['title']) || empty($data['link'])){
         sendResponse([
             "success" => false
@@ -108,7 +98,6 @@ function createResource($db, $data){
 }
 
 function updateResource($db, $data){
-
     if(empty($data['id'])){
         sendResponse([
             "success" => false
@@ -119,9 +108,7 @@ function updateResource($db, $data){
         SELECT * FROM resources
         WHERE id = ?
     ");
-
     $stmt->execute([$data['id']]);
-
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if(!$existing){
@@ -159,43 +146,28 @@ function updateResource($db, $data){
 }
 
 function deleteResource($db, $id){
-
     if(!is_numeric($id)){
         sendResponse([
             "success" => false
         ], 400);
     }
 
-    $stmt = $db->prepare("
-        SELECT id
-        FROM resources
-        WHERE id = ?
-    ");
-
+    $stmt = $db->prepare("SELECT id FROM resources WHERE id = ?");
     $stmt->execute([$id]);
 
     if(!$stmt->fetch()){
-        sendResponse([
-            "success" => false
-        ], 404);
+        sendResponse(["success" => false], 404);
     }
 
-    $stmt = $db->prepare("
-        DELETE FROM resources
-        WHERE id = ?
-    ");
-
+    $stmt = $db->prepare("DELETE FROM resources WHERE id = ?");
     $stmt->execute([$id]);
 
-    sendResponse([
-        "success" => true
-    ]);
+    sendResponse(["success" => true]);
 }
 
 // ========= COMMENTS =========
 
 function getComments($db, $resource_id){
-
     if(!is_numeric($resource_id)){
         sendResponse([
             "success" => false
@@ -208,7 +180,6 @@ function getComments($db, $resource_id){
         WHERE resource_id = ?
         ORDER BY id ASC
     ");
-
     $stmt->execute([$resource_id]);
 
     sendResponse([
@@ -218,37 +189,19 @@ function getComments($db, $resource_id){
 }
 
 function createComment($db, $data){
-
-    $resourceId =
-        $data['resource_id']
-        ?? $data['resourceId']
-        ?? null;
-
+    $resourceId = $data['resource_id'] ?? $data['resourceId'] ?? null;
     $author = $data['author'] ?? null;
     $text = $data['text'] ?? null;
 
-    if(
-        empty($resourceId) ||
-        empty($author) ||
-        empty($text)
-    ){
-        sendResponse([
-            "success" => false
-        ], 400);
+    if(empty($resourceId) || empty($author) || empty($text)){
+        sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("
-        SELECT id
-        FROM resources
-        WHERE id = ?
-    ");
-
+    $stmt = $db->prepare("SELECT id FROM resources WHERE id = ?");
     $stmt->execute([$resourceId]);
 
     if(!$stmt->fetch()){
-        sendResponse([
-            "success" => false
-        ], 404);
+        sendResponse(["success" => false], 404);
     }
 
     $stmt = $db->prepare("
@@ -256,176 +209,96 @@ function createComment($db, $data){
         VALUES(?, ?, ?)
     ");
 
-    $stmt->execute([
-        $resourceId,
-        $author,
-        $text
-    ]);
+    $stmt->execute([$resourceId, $author, $text]);
 
-    sendResponse([
-        "success" => true
-    ], 201);
+    sendResponse(["success" => true], 201);
 }
 
 function deleteComment($db, $id){
-
     if(!is_numeric($id)){
-        sendResponse([
-            "success" => false
-        ], 400);
+        sendResponse(["success" => false], 400);
     }
 
-    $stmt = $db->prepare("
-        SELECT id
-        FROM comments_resource
-        WHERE id = ?
-    ");
-
+    $stmt = $db->prepare("SELECT id FROM comments_resource WHERE id = ?");
     $stmt->execute([$id]);
 
     if(!$stmt->fetch()){
-        sendResponse([
-            "success" => false
-        ], 404);
+        sendResponse(["success" => false], 404);
     }
 
-    $stmt = $db->prepare("
-        DELETE FROM comments_resource
-        WHERE id = ?
-    ");
-
+    $stmt = $db->prepare("DELETE FROM comments_resource WHERE id = ?");
     $stmt->execute([$id]);
 
-    sendResponse([
-        "success" => true
-    ]);
+    sendResponse(["success" => true]);
 }
 
 // ========= ROUTER =========
 
 try {
-
     // ===== GET =====
     if($method === "GET"){
-
         $id = $_GET['id'] ?? null;
+        $search = $_GET['search'] ?? $_GET['q'] ?? null;
 
-        $search =
-            $_GET['search']
-            ?? $_GET['q']
-            ?? null;
-
-        if(
-            isset($_GET['comments']) ||
-            isset($_GET['resource_id']) ||
-            isset($_GET['resourceId'])
-        ){
-
-            $resource_id =
-                $_GET['comments']
-                ?? $_GET['resource_id']
-                ?? $_GET['resourceId'];
-
+        if(isset($_GET['comments']) || isset($_GET['resource_id']) || isset($_GET['resourceId'])){
+            $resource_id = $_GET['comments'] ?? $_GET['resource_id'] ?? $_GET['resourceId'];
             getComments($db, $resource_id);
-        }
-
-        elseif($id){
-
+        } elseif($id){
             getResource($db, $id);
-        }
-
-        else {
-
+        } else {
             getAllResources($db, $search);
         }
     }
 
     // ===== POST =====
     elseif($method === "POST"){
-
-        if(
-            isset($data['resource_id']) ||
-            isset($data['resourceId'])
-        ){
-
+        if(isset($data['resource_id']) || isset($data['resourceId'])){
             createComment($db, $data);
-
         } else {
-
             createResource($db, $data);
         }
     }
 
     // ===== PUT =====
     elseif($method === "PUT"){
-
         updateResource($db, $data);
     }
 
     // ===== DELETE =====
     elseif($method === "DELETE"){
-
         $id = $_GET['id'] ?? null;
+        
+        // محاولة استخراج معرف التعليق من عدة مفاتيح محتملة
+        $comment_id = $_GET['comment'] ?? 
+                      $_GET['comment_id'] ?? 
+                      $_GET['commentId'] ?? 
+                      $_GET['delete_comment'] ?? 
+                      (isset($_GET['comments']) && is_numeric($_GET['comments']) ? $_GET['comments'] : null);
 
-        // DELETE COMMENT
-        if(
-            isset($_GET['comment']) ||
-            isset($_GET['comment_id']) ||
-            isset($_GET['commentId']) ||
-            isset($_GET['delete_comment']) ||
-            isset($_GET['comments'])
-        ){
-
-            $comment_id =
-                $_GET['comment']
-                ?? $_GET['comment_id']
-                ?? $_GET['commentId']
-                ?? $_GET['delete_comment']
-                ?? $_GET['comments']
-                ?? $id;
-
+        if ($comment_id) {
             deleteComment($db, $comment_id);
-        }
-
-        // DELETE BY ID
-        elseif($id){
-
-            $stmt = $db->prepare("
-                SELECT id
-                FROM comments_resource
-                WHERE id = ?
-            ");
-
+        } elseif ($id) {
+            // إذا تم إرسال id فقط، نتحقق أولاً هل هو تعليق؟
+            $stmt = $db->prepare("SELECT id FROM comments_resource WHERE id = ?");
             $stmt->execute([$id]);
-
-            if($stmt->fetch()){
-
+            
+            if ($stmt->fetch()) {
                 deleteComment($db, $id);
-
             } else {
-
+                // إذا لم يكن تعليقاً، نحاول حذفه كمصدر
                 deleteResource($db, $id);
             }
-        }
-
-        else{
-
-            sendResponse([
-                "success" => false
-            ], 400);
+        } else {
+            sendResponse(["success" => false], 400);
         }
     }
 
     // ===== METHOD NOT ALLOWED =====
     else {
-
-        sendResponse([
-            "success" => false
-        ], 405);
+        sendResponse(["success" => false], 405);
     }
 
 } catch(Exception $e){
-
     sendResponse([
         "success" => false,
         "error" => $e->getMessage()
