@@ -333,17 +333,30 @@ try {
 
         $id = $_GET['id'] ?? null;
 
-        $isComment =
+        // حذف comment
+        if(
             isset($_GET['comment']) ||
             isset($_GET['comment_id']) ||
             isset($_GET['commentId']) ||
-            isset($_GET['delete_comment']);
+            isset($_GET['delete_comment'])
+        ){
 
-        if($isComment){
+            $comment_id =
+                $_GET['comment'] ??
+                $_GET['comment_id'] ??
+                $_GET['commentId'] ??
+                $_GET['delete_comment'];
 
-            deleteComment($db, $id);
+            // إذا كانت القيمة true أو أي قيمة غير رقمية
+            // استخدم id الحقيقي
+            if(!is_numeric($comment_id)){
+                $comment_id = $id;
+            }
+
+            deleteComment($db, $comment_id);
 
         }
+        // حذف resource
         elseif($id !== null){
 
             deleteResource($db, $id);
