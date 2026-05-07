@@ -162,7 +162,6 @@ function deleteResource($db, $id){
         sendResponse(["success" => false], 404);
     }
 
-    // حذف التعليقات المرتبطة أولاً
     $stmt = $db->prepare("
         DELETE FROM comments_resource
         WHERE resource_id = ?
@@ -170,7 +169,6 @@ function deleteResource($db, $id){
 
     $stmt->execute([$id]);
 
-    // حذف المورد
     $stmt = $db->prepare("
         DELETE FROM resources
         WHERE id = ?
@@ -335,41 +333,20 @@ try {
 
         $id = $_GET['id'] ?? null;
 
-        $comment_id =
-            $_GET['comment'] ??
-            $_GET['comment_id'] ??
-            $_GET['commentId'] ??
-            $_GET['delete_comment'] ??
-            $_GET['comments'] ??
-            null;
+        $isComment =
+            isset($_GET['comment']) ||
+            isset($_GET['comment_id']) ||
+            isset($_GET['commentId']) ||
+            isset($_GET['delete_comment']);
 
-        // حذف comment مباشر
-        if($comment_id !== null){
+        if($isComment){
 
-            deleteComment($db, $comment_id);
+            deleteComment($db, $id);
 
         }
-        // إذا جاء فقط id
         elseif($id !== null){
 
-            // هل هو comment؟
-            $stmt = $db->prepare("
-                SELECT id FROM comments_resource
-                WHERE id = ?
-            ");
-
-            $stmt->execute([$id]);
-
-            if($stmt->fetch()){
-
-                deleteComment($db, $id);
-
-            }
-            else{
-
-                deleteResource($db, $id);
-
-            }
+            deleteResource($db, $id);
 
         }
         else{
