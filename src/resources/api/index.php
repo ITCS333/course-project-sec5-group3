@@ -8,6 +8,7 @@ $db = getDBConnection();
 
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);
+$action = $_GET['action'] ?? null;
 
 function sendResponse($data, $code = 200){
     http_response_code($code);
@@ -163,13 +164,6 @@ function deleteResource($db, $id){
     }
 
     $stmt = $db->prepare("
-        DELETE FROM comments_resource
-        WHERE resource_id = ?
-    ");
-
-    $stmt->execute([$id]);
-
-    $stmt = $db->prepare("
         DELETE FROM resources
         WHERE id = ?
     ");
@@ -205,11 +199,15 @@ function getComments($db, $resource_id){
 
 function createComment($db, $data){
 
-    $resourceId = $data['resource_id'] ?? $data['resourceId'] ?? null;
+    $resourceId = $data['resource_id'] ?? null;
     $author = $data['author'] ?? null;
     $text = $data['text'] ?? null;
 
     if(empty($resourceId) || empty($author) || empty($text)){
+        sendResponse(["success" => false], 400);
+    }
+
+    if(!is_numeric($resourceId)){
         sendResponse(["success" => false], 400);
     }
 
@@ -236,13 +234,14 @@ function createComment($db, $data){
     ]);
 
     sendResponse([
-        "success" => true
+        "success" => true,
+        "id" => $db->lastInsertId()
     ], 201);
 }
 
-function deleteComment($db, $id){
+function deleteComment($db, $commentId){
 
-    if(!is_numeric($id)){
+    if(!is_numeric($commentId)){
         sendResponse(["success" => false], 400);
     }
 
@@ -251,7 +250,7 @@ function deleteComment($db, $id){
         WHERE id = ?
     ");
 
-    $stmt->execute([$id]);
+    $stmt->execute([$commentId]);
 
     if(!$stmt->fetch()){
         sendResponse(["success" => false], 404);
@@ -262,7 +261,7 @@ function deleteComment($db, $id){
         WHERE id = ?
     ");
 
-    $stmt->execute([$id]);
+    $stmt->execute([$commentId]);
 
     sendResponse([
         "success" => true
@@ -276,18 +275,10 @@ try {
     if($method === "GET"){
 
         $id = $_GET['id'] ?? null;
-        $search = $_GET['search'] ?? $_GET['q'] ?? null;
+        $resource_id = $_GET['resource_id'] ?? null;
+        $search = $_GET['search'] ?? null;
 
-        if(
-            isset($_GET['comments']) ||
-            isset($_GET['resource_id']) ||
-            isset($_GET['resourceId'])
-        ){
-
-            $resource_id =
-                $_GET['comments'] ??
-                $_GET['resource_id'] ??
-                $_GET['resourceId'];
+        if($action === "comments"){
 
             getComments($db, $resource_id);
 
@@ -307,10 +298,7 @@ try {
 
     elseif($method === "POST"){
 
-        if(
-            isset($data['resource_id']) ||
-            isset($data['resourceId'])
-        ){
+        if($action === "comment"){
 
             createComment($db, $data);
 
@@ -331,40 +319,18 @@ try {
 
     elseif($method === "DELETE"){
 
-        $id = $_GET['id'] ?? null;
+        if($action === "delete_comment"){
 
-        // حذف comment
-        if(
-            isset($_GET['comment']) ||
-            isset($_GET['comment_id']) ||
-            isset($_GET['commentId']) ||
-            isset($_GET['delete_comment'])
-        ){
+            $commentId = $_GET['comment_id'] ?? null;
 
-            $comment_id =
-                $_GET['comment'] ??
-                $_GET['comment_id'] ??
-                $_GET['commentId'] ??
-                $_GET['delete_comment'];
-
-            // إذا كانت القيمة true أو أي قيمة غير رقمية
-            // استخدم id الحقيقي
-            if(!is_numeric($comment_id)){
-                $comment_id = $id;
-            }
-
-            deleteComment($db, $comment_id);
-
-        }
-        // حذف resource
-        elseif($id !== null){
-
-            deleteResource($db, $id);
+            deleteComment($db, $commentId);
 
         }
         else{
 
-            sendResponse(["success" => false], 400);
+            $resourceId = $_GET['id'] ?? null;
+
+            deleteResource($db, $resourceId);
 
         }
 
@@ -380,8 +346,7 @@ try {
 catch(Exception $e){
 
     sendResponse([
-        "success" => false,
-        "error" => $e->getMessage()
+        "success" => false
     ], 500);
 
 }
